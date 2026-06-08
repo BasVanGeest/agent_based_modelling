@@ -10,13 +10,14 @@ class Highway:
         self.lane_length = lane_length
         self.grid = np.full((num_lanes, lane_length), None, dtype=object)
     
-    def move_car(self, car, new_lane, new_position):
-        if not self.check_cell_valid(new_lane, new_position): return False
-        if self.check_cell_occupied(new_lane, new_position): return False
-
+    def move_car(self, t, car, new_lane, new_position):
         # check for the boundary conditions, looping cars around if they are at the end of the lane
         if new_position >= self.lane_length:
             new_position = new_position % self.lane_length
+            car.lap(t)
+
+        if not self.check_cell_valid(new_lane, new_position): return False
+        if self.check_cell_occupied(new_lane, new_position): return False
 
         # move the car
         self.grid[car.lane, car.position] = None
@@ -67,12 +68,16 @@ class Highway:
                 return offset - 1
         return self.lane_length - 1
 
-    def move_forward(self, car):
+    def move_forward(self, t, car):
         """Move car forward by its current velocity. Assumes velocity has
         been computed according to NS rules and that the destination cell
         is free.
         """
-        new_position = (car.position + car.velocity) % self.lane_length
+        new_position = (car.position + car.velocity)
+        if new_position >= self.lane_length:
+            new_position = new_position % self.lane_length
+            car.lap(t)
+
         if new_position == car.position: return True
         if self.check_cell_occupied(car.lane, new_position): return False
 

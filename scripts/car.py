@@ -1,4 +1,5 @@
 import random
+import numpy as np
 
 MAX_SPEED = 5
 
@@ -8,6 +9,13 @@ class Car:
         self.velocity = 0
         self.lane = 0
         self.p = p  # Random slowdown probability
+        self.learning_rate = 0.1 #speed of updating threshold value
+        
+
+        # evolution
+        self.threshold = 5.0
+        self.previous_lap_time = np.inf
+        self.enter_t = 0 # t value in which the car entered the highway 
 
 
 
@@ -28,4 +36,20 @@ class Car:
         if self.velocity > 0 and random.random() < p:
             self.velocity -= 1
 
+    def lap(self, t):
+        new_lap_time = t - self.enter_t
+        self.enter_t = t
+        if new_lap_time < self.previous_lap_time:
+            self.evolve()
+        else:
+            self.devolve()
+        self.previous_lap_time = new_lap_time
+
+    def evolve(self):
+        self.threshold = self.threshold + (self.threshold * self.learning_rate)
+
+    def devolve(self):
+        self.threshold = self.threshold - (self.threshold * self.learning_rate)
+
+        
             

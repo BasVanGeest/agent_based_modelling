@@ -1,6 +1,6 @@
 import random
 import time
-from agent import Car
+from car import Car
 from highway import Highway
 from strategy import decide_next_lane
 
@@ -53,7 +53,7 @@ def run_visual(lanes=3, length=100, n_cars=30, p=0.01, steps=200, auto=False, de
         # Phase 1: lane-change decisions
         for car in cars:
             next_lane = decide_next_lane(car.lane, car, car.position, highway, threshold=5.0)
-            highway.move_car(car, next_lane, car.position)
+            highway.move_car(t, car, next_lane, car.position)
 
         # Phase 2a: compute velocities
         for car in cars:
@@ -63,7 +63,10 @@ def run_visual(lanes=3, length=100, n_cars=30, p=0.01, steps=200, auto=False, de
         # Phase 2b: atomic forward movement
         moves = []
         for car in cars:
-            new_pos = (car.position + car.velocity) % length
+            raw_new_pos = car.position + car.velocity
+            new_pos = raw_new_pos % length
+            if raw_new_pos >= length:
+                car.lap(t)
             moves.append((car, car.lane, car.position, new_pos))
 
         for _, lane, pos, _ in moves:
@@ -79,4 +82,4 @@ def run_visual(lanes=3, length=100, n_cars=30, p=0.01, steps=200, auto=False, de
 
 
 if __name__ == '__main__':
-    run_visual(lanes=3, length=100, n_cars=50, p=0.1, steps=500)
+    run_visual(lanes=3, length=100, n_cars=80, p=0.1, steps=500)
