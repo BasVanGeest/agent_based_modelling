@@ -3,10 +3,14 @@ import numpy as np
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
+from environment import Environment
 from model import Model
 
-# Create model
-model = Model(num_lanes=10, lane_length=100, num_cars=200, slowdown_probability=0.3)
+environment = Environment(n_lanes=1, lane_length=10, v_max=5, n_agents=2)
+model = Model(environment=environment, slowdown=0.05)
 
-fig, ax = plt.subplots(figsize=(12, 4))
-plt.ion()
+for _ in range(5):
+    print(model.environment.positions)
+    print(model.environment.velocity)
+    print("------------------------")
+    model.step()
