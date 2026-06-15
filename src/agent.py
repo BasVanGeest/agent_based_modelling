@@ -4,7 +4,7 @@ import numpy as np
 # we can instead use an Agents class. This then contains the arrays of info, which keeps the efficient structure-of-arrays (SoA), while potentially keeping the code better separated by their responsibility
 
 class Agent:
-    def __init__(self, choice_weights=np.array([1, 1, 1]), risk_factor=0.0, learning_rate=0.005, rationality=1):
+    def __init__(self, choice_weights=np.array([1, 1, 1]), risk_factor=0.0, learning_rate=0.05, rationality=1):
         # initialize agent parameters
         self.risk_factor = risk_factor
         self.learning_rate = learning_rate
@@ -33,8 +33,8 @@ class Agent:
         option = np.random.choice(3, p=probabilities)
         return option 
     
-    def update_weights(self, option, gap, reward):
+    def update_weights(self, option, gap, reward, v_max):
         target = reward # + gamma * max(...), if we would use some info about the best choice in the next iteration (see q-learning, or overleaf)
-        predicted_reward = self.choice_weights[option] * gap
+        predicted_reward = self.choice_weights[option] * np.minimum(gap, v_max)
         difference = target - predicted_reward
-        self.choice_weights[option] += self.learning_rate * difference * gap
+        self.choice_weights[option] += self.learning_rate * difference * np.minimum(gap, v_max)

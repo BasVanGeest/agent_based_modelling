@@ -19,9 +19,7 @@ class Model:
             choices[i] = agent.choose_action(gaps[i], self.environment.lanes[i], self.environment.n_lanes, self.environment.v_max)
         
         # step 3: apply lane changing, in random order, checking for collisions
-        # TODO: in a random order, go through all choices and apply them, if possible. If it was not possible, keep track to penalize the reward used for learning (or some better way of punishing / accounting for collisions)
-        agent_penalties = np.zeros(self.environment.n_agents)
-
+        applied_choices = np.zeros(self.environment.n_agents, dtype=int)
         agent_order = list(range(self.environment.n_agents))
         np.random.shuffle(agent_order)
 
@@ -35,8 +33,9 @@ class Model:
 
             if not occupied:
                 self.environment.lanes[agent_index] = lane - 1 + choice
+                applied_choices[agent_index] = choice
             else:
-                agent_penalties[agent_index] = -1
+                applied_choices[agent_index] = 1
 
         # step 4: NaSch velocity update
         gaps_forward = self.environment.compute_gaps()[:, 1]
@@ -50,4 +49,4 @@ class Model:
 
         # step 6: compute reward and update agent strategy
         for i, agent in enumerate(self.environment.agents):
-            agent.update_weights(choices[i], gaps[i][choices[i]], self.environment.velocity[i] + agent_penalties[i])
+            agent.update_weights(applied_choices[i], gaps[i][applied_choices[i]], self.environment.velocity[i], self.environment.v_max)
