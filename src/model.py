@@ -14,12 +14,29 @@ class Model:
         gaps = self.environment.compute_gaps()
 
         # step 2: every vehicle makes a decision on lane-switching
-        choices = np.zeros(self.environment.n_agents)
+        choices = np.zeros(self.environment.n_agents, dtype=int)
         for i, agent in enumerate(self.environment.agents):
-            choices[i] = agent.choose_action(gaps[i])
+            choices[i] = agent.choose_action(gaps[i], self.environment.lanes[i], self.environment.n_lanes, self.environment.v_max)
         
         # step 3: apply lane changing, in random order, checking for collisions
         # TODO: in a random order, go through all choices and apply them, if possible. If it was not possible, keep track to penalize the reward used for learning (or some better way of punishing / accounting for collisions)
+        agent_penalties = np.zeros(self.environment.n_agents)
+
+        agent_order = list(range(self.environment.n_agents))
+        np.random.shuffle(agent_order)
+
+        for agent_index in agent_order:
+            agent = self.environment.agents[agent_index]
+            choice = choices[agent_index]
+            lane = self.environment.lanes[agent_index]
+            position = self.environment.positions[agent_index]
+
+            occupied = any(self.environment.lanes[i] == lane - 1 + choice and self.environment.positions[i] == position for i in range(self.environment.n_agents))
+
+            if not occupied:
+                self.environment.lanes[agent_index] = lane - 1 + choice
+            else:
+                agent_penalties[agent_index] = -1
 
         # step 4: NaSch velocity update
         gaps_forward = self.environment.compute_gaps()[:, 1]
@@ -32,4 +49,5 @@ class Model:
         self.environment.positions = (self.environment.positions + self.environment.velocity) % self.environment.lane_length
 
         # step 6: compute reward and update agent strategy
-        
+        for i, agent in enumerate(self.environment.agents):
+            agent.update_weights(choices[i], gaps[i][choices[i]], self.environment.velocity[i] + agent_penalties[i])

@@ -27,21 +27,57 @@ class Environment:
             self.agents.append(Agent())
 
     def compute_gaps(self):
-        gaps = np.zeros(shape=(self.n_agents, 3), dtype=int)
+        gaps = np.zeros(shape=(self.n_agents, 3), dtype=int) 
 
+        # compute front / center lane gaps, and store sorted positions for later gap computations for side-lanes
+        lane_positions = []
+        lane_gaps = []
         for lane in range(self.n_lanes):
             mask = (self.lanes == lane) # filter out all entries of vehicles within the current lane
-
+            if not np.any(mask):
+                lane_positions.append(np.array([]))
+                lane_gaps.append(np.array([]))
+                continue
+            
             position_in_lane = self.positions[mask]
             sorted_indices = np.argsort(position_in_lane)
             position_sorted = position_in_lane[sorted_indices]
 
             gaps_sorted = np.roll(position_sorted, -1) - position_sorted - 1
-            gaps_sorted[-1] = position_sorted[0] + self.lane_length - position_sorted[-1] - 1
+            gaps_sorted[-1] += self.lane_length
+
+            lane_positions.append(position_sorted)
+            lane_gaps.append(gaps_sorted)
 
             gaps[mask, 1] = gaps_sorted[np.argsort(sorted_indices)] # go back to original order
 
-            # TODO: left and right lanes
-            # TODO: account for left and right that are outside the range of lanes
+        # compute gaps for each agent, if hypothetically, they would switch to either of the 2 options
+        for i in range(self.n_agents):
+            lane = self.lanes[i]
+            pos = self.positions[i]
+
+            if lane > 0:
+                left_positions = lane_positions[lane - 1] # sorted positions of all vehicles, for the left lane
+                if len(left_positions) == 0:
+                    gaps[i, 0] = self.lane_length - 1
+                else:
+                    index = np.searchsorted(left_positions, pos, side='left')
+                    if index == len(left_positions):
+                        gap = left_positions[0] + self.lane_length - pos - 1
+                    else:
+                        gap = left_positions[index] - pos - 1
+                    gaps[i, 0] = gap
+
+            if lane < self.n_lanes - 1:
+                right_positions = lane_positions[lane + 1]
+                if len(right_positions) == 0:
+                    gaps[i, 2] = self.lane_length - 1
+                else:
+                    index = np.searchsorted(right_positions, pos, side='left')
+                    if index == len(right_positions):
+                        gap = right_positions[0] + self.lane_length - pos - 1
+                    else:
+                        gap = right_positions[index] - pos - 1
+                    gaps[i, 2] = gap
 
         return gaps
