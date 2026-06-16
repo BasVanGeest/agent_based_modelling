@@ -1,8 +1,8 @@
 import random
 import numpy as np
 
-from agent_based_modelling.scripts_2.car import Car
-from agent_based_modelling.scripts_2.strategy import choose_action, target_lane, update_learning
+from car import Car
+from strategy import choose_action, target_lane, update_learning
 
 
 class TrafficModel:

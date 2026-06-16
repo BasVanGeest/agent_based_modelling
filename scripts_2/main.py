@@ -1,7 +1,6 @@
-from agent_based_modelling.scripts_2.config import *
-from agent_based_modelling.scripts_2.model import TrafficModel
-from agent_based_modelling.scripts_2.visualization import animate_model
-
+from config import *
+from model import TrafficModel
+from visualization import *
 
 def main():
     model = TrafficModel(

@@ -2,8 +2,12 @@ class Car:
     def __init__(self, car_id, x, lane, v, v_max):
         self.id = car_id
         self.x = x
+        
+        # initialization 
         self.lane = lane
         self.v = v
+
+        # constant 
         self.v_max = v_max
 
         self.action = "S"
