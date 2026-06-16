@@ -23,65 +23,96 @@ class Agents:
         self.velocities = np.zeros(self.n_agents, dtype=int)
 
 
-    def compute_forward_gaps(self):
+    def compute_stay_gaps(self):
+        gaps_stay = np.zeros(self.n_agents, dtype=int)
+
+        for lane in range(self.n_lanes):
+            mask = (self.lane_length == lane)
+            positions_in_lane = self.positions[mask]
+
+            if positions_in_lane.size == 0:
+                continue
+
+            sorted_indices = np.argsort(positions_in_lane)
+            positions_sorted = positions_in_lane[sorted_indices]
+
+            gaps_sorted = np.diff(positions_sorted) - 1
+            gaps_sorted = np.append(gaps_sorted, positions_sorted[0] + self.lane_length - positions_sorted[-1] - 1)
+
+            # go back to original (unsorted) order
+            inverse_indices = np.zeros_like(sorted_indices)
+            inverse_indices[sorted_indices] = np.arange(len(sorted_indices))
+            gaps_stay[mask, 1] = gaps_sorted[inverse_indices]
+        
+        return gaps_stay
+
+
+    def compute_gaps(self):
         gaps = np.zeros(shape=(self.n_agents, 3), dtype=int)
+
         # compute front / center lane gaps, and store sorted positions for later gap computations for side-lanes
         lane_positions = []
-        lane_gaps = []
+        
         for lane in range(self.n_lanes):
             mask = (self.lanes == lane) # filter out all entries of vehicles within the current lane
-            if not np.any(mask):
+            positions_in_lane = self.positions[mask]
+
+            if positions_in_lane.size == 0:
                 lane_positions.append(np.array([]))
-                lane_gaps.append(np.array([]))
                 continue
             
-            position_in_lane = self.positions[mask]
-            sorted_indices = np.argsort(position_in_lane)
-            position_sorted = position_in_lane[sorted_indices]
+            sorted_indices = np.argsort(positions_in_lane)
+            positions_sorted = positions_in_lane[sorted_indices]
 
-            gaps_sorted = np.roll(position_sorted, -1) - position_sorted - 1
-            gaps_sorted[-1] += self.lane_length
+            gaps_sorted = np.diff(positions_sorted) - 1
+            gaps_sorted = np.append(gaps_sorted, positions_sorted[0] + self.lane_length - positions_sorted[-1] - 1)
 
-            lane_positions.append(position_sorted)
-            lane_gaps.append(gaps_sorted)
+            lane_positions.append(positions_sorted)
 
-            gaps[mask, 1] = gaps_sorted[np.argsort(sorted_indices)] # go back to original order
+            # go back to original (unsorted) order
+            inverse_indices = np.zeros_like(sorted_indices)
+            inverse_indices[sorted_indices] = np.arange(len(sorted_indices))
+            gaps[mask, 1] = gaps_sorted[inverse_indices] 
+
 
         # compute gaps for each agent, if hypothetically, they would switch to either of the 2 options
-        for i in range(self.n_agents):
-            lane = self.lanes[i]
-            pos = self.positions[i]
+        for lane in range(self.n_lanes):
+            mask = (self.lanes == lane)
+            positions_in_lane = self.positions[mask]
 
-            if lane > 0:
-                left_positions = lane_positions[lane - 1] # sorted positions of all vehicles, for the left lane
-                if len(left_positions) == 0:
-                    gaps[i, 0] = self.lane_length - 1
-                else:
-                    index = np.searchsorted(left_positions, pos, side='left')
-                    if index == len(left_positions):
-                        gap = left_positions[0] + self.lane_length - pos - 1
-                    else:
-                        gap = left_positions[index] - pos - 1
-                    gaps[i, 0] = gap
+            if positions_in_lane.size == 0:
+                continue
 
-            if lane < self.n_lanes - 1:
-                right_positions = lane_positions[lane + 1]
-                if len(right_positions) == 0:
-                    gaps[i, 2] = self.lane_length - 1
+            for offset, choice in [(-1, 0), (1, 2)]:
+                target_lane = lane + offset
+                if (target_lane < 0 or target_lane >= self.n_lanes):
+                    continue
+
+                target_positions = lane_positions[target_lane]
+
+                if len(target_positions) == 0:
+                    gaps[mask, choice] = self.lane_length - 1
                 else:
-                    index = np.searchsorted(right_positions, pos, side='left')
-                    if index == len(right_positions):
-                        gap = right_positions[0] + self.lane_length - pos - 1
-                    else:
-                        gap = right_positions[index] - pos - 1
-                    gaps[i, 2] = gap
+                    # see behind which vehicle they would be placed, if they'd switch to this lane
+                    indices = np.searchsorted(target_positions, positions_in_lane, side='left')
+
+                    # account for the circular boundary condition at the end of the lane, by filtering for those vehicles that would be in the front position if switched
+                    gaps_lane = np.empty_like(positions_in_lane, dtype=int)
+                    wrapping = (indices == len(target_positions))
+
+                    # non wrapping: gap to the next vehicle
+                    gaps_lane[~wrapping] = target_positions[indices[~wrapping]] - positions_in_lane[~wrapping] - 1
+                    # wrapping: gap to the end of the lane + gap from the start of the lane to the first vehicle
+                    gaps_lane[wrapping] = target_positions[0] + self.lane_length - positions_in_lane[wrapping] - 1
+
+                    gaps[mask, choice] = gaps_lane
 
         return gaps
 
 
     def choose_actions(self):
         # compute the gaps to the next vehicle ahead, for each vehicle, for each option
-        forward_gaps = self.compute_forward_gaps()
+        forward_gaps = self.compute_gaps()
 
         # create a mask to filter out all switches that would place the vehicle on a non-existing lane
         viable_options = np.ones(shape=(self.n_agents, 3), dtype=bool)
@@ -109,7 +140,7 @@ class Agents:
     
 
     def update_velocities(self, slowdown):
-        gaps_forward = self.compute_forward_gaps()[:, 1]
+        gaps_forward = self.compute_stay_gaps()
         self.velocities = np.minimum(self.velocities + 1, self.v_max) # acceleration
         self.velocities = np.minimum(self.velocities, gaps_forward) # braking
         random_values = np.random.random(self.n_agents)
