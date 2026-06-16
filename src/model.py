@@ -13,6 +13,19 @@ class Model:
         choices, gaps = self.agents.choose_actions()
 
         # step 2: apply lane changing, in random order, checking for collisions
+        applied_choices = self.apply_choices(choices)
+
+        # step 3: NaSch velocity update
+        self.agents.update_velocities(self.slowdown)
+
+        # step 4: update vehicle positions
+        self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
+
+        # step 5: compute reward and update agent strategy
+        self.agents.update_weights(applied_choices, gaps)
+
+
+    def apply_choices(self, choices):
         applied_choices = np.zeros(self.agents.n_agents, dtype=int)
         agent_order = list(range(self.agents.n_agents))
         np.random.shuffle(agent_order)
@@ -30,11 +43,4 @@ class Model:
             else:
                 applied_choices[agent_index] = 1
 
-        # step 3: NaSch velocity update
-        self.agents.update_velocities(self.slowdown)
-
-        # step 4: update vehicle positions
-        self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
-
-        # step 5: compute reward and update agent strategy
-        self.agents.update_weights(applied_choices, gaps)
+        return applied_choices
