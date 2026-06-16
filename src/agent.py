@@ -1,7 +1,7 @@
 import numpy as np
 
 class Agents:
-    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, choice_weights=np.array([0, 1, 0]), risk_factor=0.0, learning_rate=0.05, rationality=1):
+    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, choice_weights=np.array([0.2, 1, 0.2]), risk_factor=0.0, learning_rate=0.05, rationality=1):
         # local copies of global info, for ease of use
         self.n_agents = n_agents
         self.n_lanes = n_lanes
@@ -27,7 +27,7 @@ class Agents:
         gaps_stay = np.zeros(self.n_agents, dtype=int)
 
         for lane in range(self.n_lanes):
-            mask = (self.lane_length == lane)
+            mask = (self.lanes == lane)
             positions_in_lane = self.positions[mask]
 
             if positions_in_lane.size == 0:
@@ -42,7 +42,7 @@ class Agents:
             # go back to original (unsorted) order
             inverse_indices = np.zeros_like(sorted_indices)
             inverse_indices[sorted_indices] = np.arange(len(sorted_indices))
-            gaps_stay[mask, 1] = gaps_sorted[inverse_indices]
+            gaps_stay[mask] = gaps_sorted[inverse_indices]
         
         return gaps_stay
 
@@ -133,7 +133,7 @@ class Agents:
 
         # make the choice between the viable options
         cumulative_sum = np.cumsum(probabilities, axis=1)
-        random_values = np.random.random(self.n_agents) + 1e-6 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
+        random_values = np.random.random(self.n_agents) - 1e-6 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
         choices = np.argmax(cumulative_sum >= random_values[:, np.newaxis], axis=1)
         
         return choices, forward_gaps
@@ -148,9 +148,12 @@ class Agents:
 
 
     def update_weights(self, choices, gaps):
-        rewards = self.velocities
+        rewards = self.velocities / self.v_max
         used_weights = self.choice_weights[np.arange(self.n_agents), choices]
         used_gaps = gaps[np.arange(self.n_agents), choices]
-        predicted_rewards = used_weights * np.minimum(used_gaps, self.v_max)
+
+        normalized_gaps = np.minimum(used_gaps, self.v_max) / self.v_max
+        predicted_rewards = used_weights * normalized_gaps
         difference = rewards - predicted_rewards
-        self.choice_weights[np.arange(self.n_agents), choices] += self.learning_rate * difference * np.minimum(used_gaps, self.v_max)
+
+        self.choice_weights[np.arange(self.n_agents), choices] += self.learning_rate * difference * normalized_gaps
