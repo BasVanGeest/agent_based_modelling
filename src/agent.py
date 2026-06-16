@@ -101,9 +101,9 @@ class Agents:
         # TODO: add loss aversion? It seems like a hard requirement from the project requirements list. Maybe ask TA's about it
 
         # make the choice between the viable options
-        # TODO: instead calculate cumulative probabilities, then generate n_agents random values in [0, 1], then find the first index where the cumulative sum is greater than this random value
-        # TODO: that would likely be a decent amount faster than what we do now, since we're now just sequentually doing a random.choice
-        choices = np.array([np.random.choice(3, p=row_probabilities) for row_probabilities in probabilities])
+        cumulative_sum = np.cumsum(probabilities, axis=1)
+        random_values = np.random.random(self.n_agents) + 1e-6 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
+        choices = np.argmax(cumulative_sum >= random_values[:, np.newaxis], axis=1)
         
         return choices, forward_gaps
     
