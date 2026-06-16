@@ -26,21 +26,31 @@ class Model:
 
 
     def apply_choices(self, choices):
-        applied_choices = np.zeros(self.agents.n_agents, dtype=int)
-        agent_order = list(range(self.agents.n_agents))
-        np.random.shuffle(agent_order)
+        n_agents = self.agents.n_agents
+        applied_choices = np.ones(n_agents, dtype=int)
+
+        # create a 2D array, storing for each grid cell if it's occupied or not
+        grid_occupancy = np.zeros(shape=(self.agents.n_lanes, self.agents.lane_length), dtype=bool)
+        grid_occupancy[self.agents.lanes, self.agents.positions] = True
+
+        agent_order = np.random.permutation(n_agents)
 
         for agent_index in agent_order:
             choice = choices[agent_index]
             lane = self.agents.lanes[agent_index]
             position = self.agents.positions[agent_index]
 
-            occupied = any(self.agents.lanes[i] == lane - 1 + choice and self.agents.positions[i] == position for i in range(self.agents.n_agents))
+            if choice == 1:
+                continue
+            
+            target_lane = lane - 1 + choice
 
-            if not occupied:
-                self.agents.lanes[agent_index] = lane - 1 + choice
+            if not grid_occupancy[target_lane, position]:
+                self.agents.lanes[agent_index] = target_lane
                 applied_choices[agent_index] = choice
-            else:
-                applied_choices[agent_index] = 1
+
+                # update occupancy grid with newly moved agent
+                grid_occupancy[lane, position] = False
+                grid_occupancy[target_lane, position] = True
 
         return applied_choices
