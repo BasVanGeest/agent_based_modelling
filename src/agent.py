@@ -4,7 +4,7 @@ import numpy as np
 # we can instead use an Agents class. This then contains the arrays of info, which keeps the efficient structure-of-arrays (SoA), while potentially keeping the code better separated by their responsibility
 
 class Agent:
-    def __init__(self, choice_weights=np.array([1, 1, 1]), risk_factor=0.0, learning_rate=0.05, rationality=1):
+    def __init__(self, choice_weights=np.array([0, 1, 0]), risk_factor=0.0, learning_rate=0.05, rationality=1):
         # initialize agent parameters
         self.risk_factor = risk_factor
         self.learning_rate = learning_rate
