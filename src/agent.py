@@ -98,6 +98,8 @@ class Agents:
         utility_exp = np.multiply(viable_options, np.exp(self.rationality * utility))
         probabilities = utility_exp / np.sum(utility_exp, axis=1)[:, np.newaxis]
 
+        # TODO: add loss aversion? It seems like a hard requirement from the project requirements list. Maybe ask TA's about it
+
         # make the choice between the viable options
         # TODO: instead calculate cumulative probabilities, then generate n_agents random values in [0, 1], then find the first index where the cumulative sum is greater than this random value
         # TODO: that would likely be a decent amount faster than what we do now, since we're now just sequentually doing a random.choice

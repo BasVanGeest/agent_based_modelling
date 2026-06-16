@@ -10,3 +10,10 @@ Running a file is then as simple as:
 ```bash
 uv run src/main.py
 ```
+
+## Profiling
+Though this is a bit overkill, it can be nice to find crucial performance bottlenecks. You can use snakeviz to get an interactive flamegraph by running:
+```bash
+python -m cProfile -o output.prof src/main.py
+snakeviz output.prof
+```
