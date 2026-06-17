@@ -133,7 +133,7 @@ class Agents:
 
         # make the choice between the viable options
         cumulative_sum = np.cumsum(probabilities, axis=1)
-        random_values = np.random.random(self.n_agents) - 1e-6 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
+        random_values = np.random.random(self.n_agents) + 1e-10 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
         choices = np.argmax(cumulative_sum >= random_values[:, np.newaxis], axis=1)
         
         return choices, forward_gaps
@@ -148,6 +148,7 @@ class Agents:
 
 
     def update_weights(self, choices, gaps):
+        # TODO update to use acceleration as reward?
         rewards = self.velocities / self.v_max
         used_weights = self.choice_weights[np.arange(self.n_agents), choices]
         used_gaps = gaps[np.arange(self.n_agents), choices]
