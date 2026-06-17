@@ -7,6 +7,7 @@ class Model:
     def __init__(self, agents : Agents, slowdown = 0.05):
         self.agents = agents
         self.slowdown = slowdown
+        self.step_count = 0
 
     def step(self):
         # step 1: compute gaps and let each vehicle make a decision on if / where to switch
@@ -23,6 +24,8 @@ class Model:
 
         # step 5: compute reward and update agent strategy
         self.agents.update_weights(applied_choices, gaps)
+
+        self.step_count += 1
 
 
     def apply_choices(self, choices):

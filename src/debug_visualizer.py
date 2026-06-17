@@ -47,7 +47,7 @@ class BasicStepwiseVisualizer:
         self.ax.grid(True, linestyle='--', alpha=0.3)
         self.ax.set_xlabel('Position')
         self.ax.set_ylabel('Lane')
-        self.ax.set_title('Traffic Simulation')
+        self.ax.set_title(f'Traffic Simulation, step {self.model.step_count}')
 
         # per agent, draw its trail with its unique color
         for i in range(self.agents.n_agents):
@@ -80,7 +80,12 @@ class BasicStepwiseVisualizer:
         self.redraw()
 
 if __name__ == '__main__':
-    agents = Agents(n_agents=20, n_lanes=5, lane_length=30)
+    agents = Agents(n_agents=50, n_lanes=5, lane_length=100)
     model = Model(agents=agents, slowdown=0.3)
+
+    # for _ in range(1000):
+    #     model.step()
+    
     visualizer = BasicStepwiseVisualizer(agents, model, trail_length=3)
+
     plt.show()
