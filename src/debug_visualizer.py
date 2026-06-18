@@ -80,8 +80,14 @@ class BasicStepwiseVisualizer:
         self.redraw()
 
 if __name__ == '__main__':
-    agents = Agents(n_agents=50, n_lanes=5, lane_length=100, learning_rate=0.2)
-    model = Model(agents=agents, slowdown=0.3)
+    density = 0.2
+    n_lanes = 3
+    lane_length = 100
+    slowdown = 0.2
+
+    n_agents = int(density * n_lanes * lane_length)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length)
+    model = Model(agents=agents, slowdown=slowdown)
 
     for _ in range(1000):
         model.step()

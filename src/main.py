@@ -62,7 +62,7 @@ def run_simulation(params):
     return flow, avg_velocity, stay_metric, M3, M4
 
 
-n_lanes = 1
+n_lanes = 3
 lane_length = 100
 v_max = 5
 samples = 20
