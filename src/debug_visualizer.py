@@ -80,11 +80,11 @@ class BasicStepwiseVisualizer:
         self.redraw()
 
 if __name__ == '__main__':
-    agents = Agents(n_agents=50, n_lanes=5, lane_length=100)
+    agents = Agents(n_agents=50, n_lanes=5, lane_length=100, learning_rate=0.2)
     model = Model(agents=agents, slowdown=0.3)
 
-    # for _ in range(1000):
-    #     model.step()
+    for _ in range(1000):
+        model.step()
     
     visualizer = BasicStepwiseVisualizer(agents, model, trail_length=3)
 

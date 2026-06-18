@@ -23,6 +23,8 @@ def run_simulation(params):
     
     avg_vel = total_vel / n_measure_steps
     flow = density * avg_vel
+
+    # TODO: measure flow, avg velocity / max velocity, avg weight for stay vs avg weights for non-stay, order parameter?
     return flow
 
 n_lanes = 1

@@ -133,7 +133,8 @@ class Agents:
         probabilities = utility_exp / np.sum(utility_exp, axis=1)[:, np.newaxis]
 
         # TODO: add loss aversion? It seems like a hard requirement from the project requirements list. Maybe ask TA's about it
-
+        # TODO: use nested logit? surely if say, moving left isn't possible / removed, then most of the probability of going left goes to switching right; Not equally to staying and switch right. So we don't really have IIA here
+        
         # make the choice between the viable options
         cumulative_sum = np.cumsum(probabilities, axis=1)
         random_values = np.random.random(self.n_agents) + 1e-10 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
