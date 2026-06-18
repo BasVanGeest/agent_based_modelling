@@ -16,7 +16,6 @@ class Model:
         # step 2: apply lane changing, in random order, checking for collisions
         applied_choices = self.apply_choices(choices)
 
-        # TODO: add some penalty for switching lanes?
         # step 3: NaSch velocity update
         self.agents.update_velocities(self.slowdown)
 
@@ -24,7 +23,7 @@ class Model:
         self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
 
         # step 5: compute reward and update agent strategy
-        self.agents.update_weights(applied_choices, gaps)
+        self.agents.update_weights(applied_choices, self.agents.velocities)
 
         self.step_count += 1
 

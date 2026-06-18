@@ -22,7 +22,6 @@ def run_simulation(params):
 
     total_vel = 0.0
     total_flow = 0.0
-    total_stay_fraction = 0.0
     total_stopped_fraction = 0.0
 
     # assuming we're in equilibrium, estimate measures over a small number of steps
@@ -33,16 +32,12 @@ def run_simulation(params):
         total_vel += avg_velocity
         total_flow += avg_velocity * density
 
-        probabability_stay = np.mean(agents.choice_weights[:, 1] / np.sum(agents.choice_weights, axis=1)) # relative prominence of staying, over switching lanes (assuming gaps in each lane are identical)
-        total_stay_fraction += probabability_stay
-
         stopped_fraction = np.mean(model.agents.velocities == 0)
         total_stopped_fraction += stopped_fraction
     
     # calculate the actual metrics
     avg_velocity = total_vel / n_measure_steps
     flow = total_flow / n_measure_steps
-    stay_metric = total_stay_fraction / n_measure_steps
 
     # order parameter for the limit p -> 1, based on paper 'Criticality in Dynamic Arrest: Correspondence between Glasses and Traffic'
     freeflow_velocity = agents.v_max - slowdown # avg velocity of vehicles in equilibrium, if no interaction was present (we don't break to keep distance, don't laneswap, etc...)
@@ -59,7 +54,7 @@ def run_simulation(params):
     M4 = avg_velocity / optimal_avg_speed
     # TODO: maybe use the Gini coefficient as order parameter? Might be more robust then just the fraction of vehicles with velocity 0
 
-    return flow, avg_velocity, stay_metric, M3, M4
+    return flow, avg_velocity, M3, M4
 
 
 n_lanes = 3
@@ -91,10 +86,10 @@ flow_mean = np.zeros((n_rho, n_p))
 flow_std = np.zeros((n_rho, n_p))
 velocity_mean = np.zeros((n_rho, n_p))
 velocity_std = np.zeros((n_rho, n_p))
-stay_mean = np.zeros((n_rho, n_p))
-stay_std = np.zeros((n_rho, n_p))
-M_mean = np.zeros((n_rho, n_p))
-M_std = np.zeros((n_rho, n_p))
+M3_mean = np.zeros((n_rho, n_p))
+M3_std = np.zeros((n_rho, n_p))
+M4_mean = np.zeros((n_rho, n_p))
+M4_std = np.zeros((n_rho, n_p))
 
 idx = 0
 for i in range(n_rho):
@@ -102,17 +97,17 @@ for i in range(n_rho):
         block = results[idx : idx + samples]
         flows = [result[0] for result in block]
         velocities = [result[1] for result in block]
-        stay_metrics = [result[2] for result in block]
-        M = [result[4] for result in block]
+        M3 = [result[2] for result in block]
+        M4 = [result[3] for result in block]
 
         flow_mean[i, j] = np.mean(flows)
         flow_std[i, j] = np.std(flows)
         velocity_mean[i, j] = np.mean(velocities)
         velocity_std[i, j] = np.std(velocities)
-        stay_mean[i, j] = np.mean(stay_metrics)
-        stay_std[i, j] = np.std(stay_metrics)
-        M_mean[i, j] = np.mean(M)
-        M_std[i, j] = np.std(M)
+        M3_mean[i, j] = np.mean(M3)
+        M3_std[i, j] = np.std(M3)
+        M4_mean[i, j] = np.mean(M4)
+        M4_std[i, j] = np.std(M4)
 
         idx += samples
 
@@ -138,17 +133,17 @@ ax.set_ylabel('slowdown probability')
 ax.set_title('mean velocity')
 fig.colorbar(cont, ax=ax)
 
-# mean stay metric
+# M3 order parameter
 ax = axes[1, 0]
-cont = ax.contourf(X, Y, stay_mean, levels=20, cmap='viridis')
+cont = ax.contourf(X, Y, M3_mean, levels=20, cmap='viridis')
 ax.set_xlabel(r'$\rho$')
 ax.set_ylabel('slowdown probability')
-ax.set_title('mean fraction of weights towards stay')
+ax.set_title('order parameter M3 (fraction of vehicles standing still)')
 fig.colorbar(cont, ax=ax)
 
-# order parameter
+# M4 order parameter
 ax = axes[1, 1]
-cont = ax.contourf(X, Y, M_mean, levels=20, cmap='viridis')
+cont = ax.contourf(X, Y, M4_mean, levels=20, cmap='viridis')
 ax.set_xlabel(r'$\rho$')
 ax.set_ylabel('slowdown probability')
 ax.set_title('order parameter M4 (fraction of max achievable avg velocity)')

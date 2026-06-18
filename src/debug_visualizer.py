@@ -82,7 +82,7 @@ class BasicStepwiseVisualizer:
 if __name__ == '__main__':
     density = 0.2
     n_lanes = 3
-    lane_length = 100
+    lane_length = 30
     slowdown = 0.2
 
     n_agents = int(density * n_lanes * lane_length)

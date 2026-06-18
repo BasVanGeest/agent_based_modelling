@@ -1,7 +1,7 @@
 import numpy as np
 
 class Agents:
-    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, choice_weights=np.array([0.2, 1, 0.2]), risk_factor=0.0, learning_rate=0.05, rationality=1):
+    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, risk_factor=0.0, experience_vs_immediate=0.7, learning_rate=0.1, rationality=1):
         # local copies of global info, for ease of use
         self.n_agents = n_agents
         self.n_lanes = n_lanes
@@ -9,12 +9,13 @@ class Agents:
         
         # homogeneous variables of agents
         self.risk_factor = risk_factor
+        self.experience_vs_immediate = experience_vs_immediate
         self.learning_rate = learning_rate
         self.rationality = rationality
         self.v_max = v_max
 
         # heterogeneous variables
-        self.choice_weights = np.tile(choice_weights, (self.n_agents,1)).astype(float)
+        self.choice_velocity_history = np.ones((self.n_agents, 3)) * (self.v_max / 2) # rough starting guess of historic avg velocity per vehicle
 
         full_positions = np.random.choice(self.n_lanes * self.lane_length, size=self.n_agents, replace=False)
         self.lanes = full_positions // self.lane_length
@@ -123,7 +124,9 @@ class Agents:
         viable_options[self.lanes == self.n_lanes - 1, 2] = False
 
         # compute weighted utility of each option
-        raw_utility = np.multiply(self.choice_weights, np.minimum(forward_gaps, self.v_max))
+        raw_utility = self.experience_vs_immediate * self.choice_velocity_history + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
+        raw_utility[:, [0, 2]] -= 3.0 # TODO: this introduces a cost to switching over staying; the driver is more certain about the output of staying, because it has some information about the vehicles that could switch to the stay lane. So maybe update this, such that risk aversion accounts for this, by having the risk aversion for non-stay options much stronger
+        # TODO: include more info about the environment, like the gap backwards for each? with only forwards gap? It's seemingly very hard for the collective switches to not lead to a drastic decrease in the throughput and avg velocity
 
         # apply risk aversion
         utility = raw_utility if np.abs(self.risk_factor) < 1e-8 else (1 - np.exp(-self.risk_factor * raw_utility)) / self.risk_factor
@@ -151,14 +154,5 @@ class Agents:
         self.velocities = np.where((self.velocities > 0) & (random_values < slowdown), self.velocities - 1, self.velocities) # janky way of reducing velocity by 1 by a given percentage, if it wasn't zero already
 
 
-    def update_weights(self, choices, gaps):
-        # TODO update to use acceleration as reward?
-        rewards = self.velocities / self.v_max
-        used_weights = self.choice_weights[np.arange(self.n_agents), choices]
-        used_gaps = gaps[np.arange(self.n_agents), choices]
-
-        normalized_gaps = np.minimum(used_gaps, self.v_max) / self.v_max
-        predicted_rewards = used_weights * normalized_gaps
-        difference = rewards - predicted_rewards
-
-        self.choice_weights[np.arange(self.n_agents), choices] += self.learning_rate * difference * normalized_gaps
+    def update_weights(self, choices, velocities):
+        self.choice_velocity_history[np.arange(self.n_agents), choices] = (1 - self.learning_rate) * self.choice_velocity_history[np.arange(self.n_agents), choices] + self.learning_rate * velocities
