@@ -59,10 +59,9 @@ class BasicStepwiseVisualizer:
         # draw cars as filled squares, each with its unique color
         self.ax.scatter(self.agents.positions, self.agents.lanes, s=120, marker='s', color=self.agent_colors, zorder=2) # draw on top of the trails
 
-        # for testing, draw the agent.choice_weights for each vehicle above them. This is to debug learning or to get an idea of if weights have converged
         for i in range(self.agents.n_agents):
-            weights = self.agents.choice_weights[i]
-            text = f'[{weights[0]:.2f}, {weights[1]:.2f}, {weights[2]:.2f}]'
+            velocity_histories = self.agents.choice_velocity_history[i]
+            text = f'[{velocity_histories[0]:.1f}, {velocity_histories[1]:.1f}, {velocity_histories[2]:.1f}]'
             
             text = self.ax.text(self.agents.positions[i], self.agents.lanes[i] + 0.1, text, ha='center', va='bottom', fontsize=6)
         self.fig.canvas.draw_idle()

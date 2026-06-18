@@ -1,7 +1,7 @@
 import numpy as np
 
 class Agents:
-    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, risk_factor=0.0, experience_vs_immediate=0.7, learning_rate=0.1, rationality=1):
+    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, risk_factor=0.75, loss_factor=2, loss_scale=3, experience_vs_immediate=0.7, learning_rate=0.1, rationality=5):
         # local copies of global info, for ease of use
         self.n_agents = n_agents
         self.n_lanes = n_lanes
@@ -9,6 +9,8 @@ class Agents:
         
         # homogeneous variables of agents
         self.risk_factor = risk_factor
+        self.loss_factor = loss_factor
+        self.loss_scale = loss_scale
         self.experience_vs_immediate = experience_vs_immediate
         self.learning_rate = learning_rate
         self.rationality = rationality
@@ -125,11 +127,18 @@ class Agents:
 
         # compute weighted utility of each option
         raw_utility = self.experience_vs_immediate * self.choice_velocity_history + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
-        raw_utility[:, [0, 2]] -= 3.0 # TODO: this introduces a cost to switching over staying; the driver is more certain about the output of staying, because it has some information about the vehicles that could switch to the stay lane. So maybe update this, such that risk aversion accounts for this, by having the risk aversion for non-stay options much stronger
-        # TODO: include more info about the environment, like the gap backwards for each? with only forwards gap? It's seemingly very hard for the collective switches to not lead to a drastic decrease in the throughput and avg velocity
 
-        # apply risk aversion
-        utility = raw_utility if np.abs(self.risk_factor) < 1e-8 else (1 - np.exp(-self.risk_factor * raw_utility)) / self.risk_factor
+        # apply loss + risk aversion using the prospect theory expression
+        references = self.velocities[:, np.newaxis]
+        delta = raw_utility - references
+
+        utility = np.zeros_like(delta)
+        gain_mask = delta >= 0
+        loss_mask = delta < 0
+        utility[gain_mask] = np.pow(delta[gain_mask], self.risk_factor)
+        utility[loss_mask] = -self.loss_scale * np.pow(-delta[loss_mask], self.loss_factor)
+        # add small negative bias, nudging away from switching
+        utility[:, [0, 2]] -= 1
 
         # account for bounded rationality using logit assumption
         utility_exp = np.multiply(viable_options, np.exp(self.rationality * utility))
