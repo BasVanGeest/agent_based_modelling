@@ -19,6 +19,7 @@ class Model:
         # step 3: NaSch velocity update
         self.agents.update_velocities(self.slowdown)
 
+        # TODO: don't accelerate (and slowdown) if the vehicle switched
         # step 4: update vehicle positions
         self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
 
