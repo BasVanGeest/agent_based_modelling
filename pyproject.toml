@@ -7,6 +7,7 @@ requires-python = ">=3.9"
 dependencies = [
     "matplotlib>=3.9.4",
     "numpy>=2.0.2",
+    "salib>=1.5.2",
     "snakeviz>=2.2.2",
     "tqdm>=4.68.3",
 ]
