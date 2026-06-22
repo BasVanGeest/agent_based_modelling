@@ -32,6 +32,8 @@ class BasicStepwiseVisualizer:
         self.ax.invert_yaxis()
         self.ax.set_yticks(np.arange(self.agents.n_lanes))
         
+        self.ax.yaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
+        self.ax.xaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
         self.ax.set_xlabel('Position along lane')
         self.ax.set_ylabel('Lane number')
         self.ax.set_title('Traffic Simulation (Step 0)')
@@ -51,8 +53,8 @@ class BasicStepwiseVisualizer:
         self.ax.invert_yaxis()
         self.ax.set_yticks(np.arange(self.agents.n_lanes))
 
-        self.ax.yaxis.grid(True, linestyle='--', alpha=1.0, linewidth=1)
-        self.ax.xaxis.grid(True, linestyle='--', alpha=0.3, linewidth=0.6)
+        self.ax.yaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
+        self.ax.xaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
         self.ax.set_xlabel('Position')
         self.ax.set_ylabel('Lane')
         self.ax.set_title(f'Traffic Simulation, step {self.model.step_count}')
@@ -92,13 +94,17 @@ if __name__ == '__main__':
     lane_length = 30
     slowdown = 0.2
 
+    # TODO: look at the distribution of agents, their learned histories, and the number of switches, and velocities
+    # TODO: it seems like for some parameter combinations, vehicles roughly fall into separate groups: ones that switch rarely, and those that switch very often (crisscrossing through the whole thing)
+    # agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
+
     n_agents = int(density * n_lanes * lane_length)
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, bias_strength=0.5)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
     model = SwitchingNaSchModel(agents=agents, slowdown=slowdown)
 
     for _ in range(100):
         model.step()
     
-    visualizer = BasicStepwiseVisualizer(agents, model, trail_length=3)
+    visualizer = BasicStepwiseVisualizer(agents, model, trail_length=2)
 
     plt.show()

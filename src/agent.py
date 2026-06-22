@@ -179,8 +179,6 @@ class Agents:
 
 
     def choose_actions(self):
-        # TODO: only allow switching if speed is non-zero? Even more so with non-zero bias-strength, the game-theory strategy doesn't take others actions into account much, often causing series of stopped vehicles switching in sync
-        
         # compute the gaps to the next vehicle ahead, for each vehicle, for each option
         forward_gaps = self.compute_gaps()
 
@@ -189,8 +187,17 @@ class Agents:
         viable_options[self.lanes == 0, 0] = False
         viable_options[self.lanes == self.n_lanes - 1, 2] = False
 
+        # only allow switching if the vehicle has non-zero velocity
+        zero_velocity_mask = (self.velocities == 0)
+        viable_options[zero_velocity_mask, 0] = False
+        viable_options[zero_velocity_mask, 2] = False
+
         # compute weighted utility of each option
         raw_utility = self.experience_vs_immediate * self.histories + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
+
+        # add bias depending on the option, such that all vehicles have a preference to move right: approximating certain traffic 'rules'
+        raw_utility[:, [0, 0]] -= self.bias_strength
+        raw_utility[:, [0, 2]] += self.bias_strength
 
         # apply loss + risk aversion using the prospect theory expression
         references = self.velocities[:, np.newaxis]
@@ -202,9 +209,6 @@ class Agents:
         utility[gain_mask] = np.pow(delta[gain_mask], self.risk_factor)
         utility[loss_mask] = -self.loss_scale * np.pow(-delta[loss_mask], self.loss_factor)
 
-        # add bias depending on the option, such that all vehicles have a preference to move right: approximating certain traffic 'rules'
-        utility[:, [0, 0]] -= self.bias_strength
-        utility[:, [0, 2]] += self.bias_strength
 
         # account for bounded rationality using logit assumption
         max_utility = np.max(utility, axis=1, keepdims=True)
