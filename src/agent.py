@@ -1,7 +1,72 @@
 import numpy as np
+import numpy.typing as npt
 
 class Agents:
-    def __init__(self, n_agents, n_lanes, lane_length, v_max=5, risk_factor=0.75, loss_factor=2, loss_scale=3, experience_vs_immediate=0.7, learning_rate=0.1, rationality=5):
+    """
+    A collection of heterogeneous agents (representin vehicles) in a multi-lane NaSch model. Agents have spatial positions, velocities and lane-changing behaviour dependent on experience.
+
+    Attributes
+    --------------
+    n_agents : int
+        number of agents
+    n_lanes : int
+        number of agents
+    lane_length : int
+        number of cells per lane
+    v_max : int
+        maximum velocity across all vehicles
+    velocities : npt.NDArray[np.int_]
+        current velocity of each agent, with shape (n_agents)
+    positions : npt.NDArray[np.int_]
+        current position along the lane of each agent, with shape (n_agents)
+    lanes : npt.NDArray[np.int_]
+        current lane of each agent, with shape (n_agents)
+    histories : npt.NDArray[np.float64]
+        learned average velocity for each action (stay, left, right), with shape (n_agents, 3)
+    """
+
+    def __init__(
+        self, 
+        n_agents: int,
+        n_lanes: int,
+        lane_length: int,
+        v_max: int = 5,
+        risk_factor: float = 0.75,
+        loss_factor: float = 2.0,
+        loss_scale: float = 3.0,
+        bias_strength: float = 0.0,
+        info_preference: float = 0.7,
+        learning_rate: float = 0.1,
+        rationality: float = 5.0
+    ) -> None:
+        """
+        Initializes all agents with random unique positions and zero velocity. Sets all relevant behaviour-defining parameters.
+
+        Parameters
+        --------------
+        n_agents : int
+            total number of agents
+        n_lanes : int
+            number of lanes
+        lane_length : int
+            number of cells per lane
+        v_max : int, default=5
+            maximum velocity across all agents
+        risk_factor : float, default=0.75
+            exponent for positive delta in expected utility
+        loss_factor : float, default=2.0
+            exponent for negative delta in expected utility
+        loss_scale : float, default=3.0
+            value by which expected losses get multipled, accounting for basic loss aversion
+        bias_strength : float, default=0.0
+            scale by which utility towards moving right is biased
+        info_preference : float, default=0.7
+            weight on velocity history vs current gap for utility calculation
+        learning_rate : float, default=0.1
+            exponential constant defining history update rate
+        rationality : float, default=5.0
+            multinomial logit control parameter; controls the strength of leaning towards optimal choices
+        """
         # local copies of global info, for ease of use
         self.n_agents = n_agents
         self.n_lanes = n_lanes
@@ -11,18 +76,18 @@ class Agents:
         self.risk_factor = risk_factor
         self.loss_factor = loss_factor
         self.loss_scale = loss_scale
-        self.experience_vs_immediate = experience_vs_immediate
+        self.bias_strength = bias_strength
+        self.experience_vs_immediate = info_preference
         self.learning_rate = learning_rate
         self.rationality = rationality
         self.v_max = v_max
 
         # heterogeneous variables
-        self.choice_velocity_history = np.ones((self.n_agents, 3)) * (self.v_max / 2) # rough starting guess of historic avg velocity per vehicle
+        self.histories = np.ones((self.n_agents, 3)) * (self.v_max / 2) # rough starting guess of historic avg velocity per vehicle
 
         full_positions = np.random.choice(self.n_lanes * self.lane_length, size=self.n_agents, replace=False)
         self.lanes = full_positions // self.lane_length
         self.positions = full_positions % self.lane_length
-
         self.velocities = np.zeros(self.n_agents, dtype=int)
 
 
@@ -114,6 +179,8 @@ class Agents:
 
 
     def choose_actions(self):
+        # TODO: only allow switching if speed is non-zero? Even more so with non-zero bias-strength, the game-theory strategy doesn't take others actions into account much, often causing series of stopped vehicles switching in sync
+        
         # compute the gaps to the next vehicle ahead, for each vehicle, for each option
         forward_gaps = self.compute_gaps()
 
@@ -123,7 +190,7 @@ class Agents:
         viable_options[self.lanes == self.n_lanes - 1, 2] = False
 
         # compute weighted utility of each option
-        raw_utility = self.experience_vs_immediate * self.choice_velocity_history + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
+        raw_utility = self.experience_vs_immediate * self.histories + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
 
         # apply loss + risk aversion using the prospect theory expression
         references = self.velocities[:, np.newaxis]
@@ -134,8 +201,10 @@ class Agents:
         loss_mask = delta < 0
         utility[gain_mask] = np.pow(delta[gain_mask], self.risk_factor)
         utility[loss_mask] = -self.loss_scale * np.pow(-delta[loss_mask], self.loss_factor)
-        # add small negative bias for specific scenarios, if we want to
-        # utility[:, [0, 2]] -= 1
+
+        # add bias depending on the option, such that all vehicles have a preference to move right: approximating certain traffic 'rules'
+        utility[:, [0, 0]] -= self.bias_strength
+        utility[:, [0, 2]] += self.bias_strength
 
         # account for bounded rationality using logit assumption
         max_utility = np.max(utility, axis=1, keepdims=True)
@@ -172,4 +241,4 @@ class Agents:
 
 
     def update_histories(self, choices, velocities):
-        self.choice_velocity_history[np.arange(self.n_agents), choices] = (1 - self.learning_rate) * self.choice_velocity_history[np.arange(self.n_agents), choices] + self.learning_rate * velocities
+        self.histories[np.arange(self.n_agents), choices] = (1 - self.learning_rate) * self.histories[np.arange(self.n_agents), choices] + self.learning_rate * velocities

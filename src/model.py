@@ -26,7 +26,7 @@ class BaseNaSchModel:
         """
         Initialises the model, by moving input data into member variables and resetting the step count.
         
-        Parameters:
+        Parameters
         --------------
         agents : Agents
             list of agents in use

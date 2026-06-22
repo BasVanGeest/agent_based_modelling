@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.widgets import Button
+
 from agent import Agents
-from model import Model
+from model import BaseNaSchModel, SwitchingNaSchModel
 
 class BasicStepwiseVisualizer:
     def __init__(self, agents, model, trail_length):
@@ -25,9 +27,11 @@ class BasicStepwiseVisualizer:
         self.button.on_clicked(self.next_step)
 
         # Define grid 
-        # TODO: add ticks only at integers; should make it clearer what the lanes are
         self.ax.set_xlim(-1, agents.lane_length)
         self.ax.set_ylim(-0.5, agents.n_lanes - 0.5)
+        self.ax.invert_yaxis()
+        self.ax.set_yticks(np.arange(self.agents.n_lanes))
+        
         self.ax.set_xlabel('Position along lane')
         self.ax.set_ylabel('Lane number')
         self.ax.set_title('Traffic Simulation (Step 0)')
@@ -44,7 +48,11 @@ class BasicStepwiseVisualizer:
         # rebuild grid + limits
         self.ax.set_xlim(-1, self.agents.lane_length)
         self.ax.set_ylim(-0.5, self.agents.n_lanes - 0.5)
-        self.ax.grid(True, linestyle='--', alpha=0.3)
+        self.ax.invert_yaxis()
+        self.ax.set_yticks(np.arange(self.agents.n_lanes))
+
+        self.ax.yaxis.grid(True, linestyle='--', alpha=1.0, linewidth=1)
+        self.ax.xaxis.grid(True, linestyle='--', alpha=0.3, linewidth=0.6)
         self.ax.set_xlabel('Position')
         self.ax.set_ylabel('Lane')
         self.ax.set_title(f'Traffic Simulation, step {self.model.step_count}')
@@ -60,10 +68,10 @@ class BasicStepwiseVisualizer:
         self.ax.scatter(self.agents.positions, self.agents.lanes, s=120, marker='s', color=self.agent_colors, zorder=2) # draw on top of the trails
 
         for i in range(self.agents.n_agents):
-            velocity_histories = self.agents.choice_velocity_history[i]
+            velocity_histories = self.agents.histories[i]
             text = f'[{velocity_histories[0]:.1f}, {velocity_histories[1]:.1f}, {velocity_histories[2]:.1f}]'
-            
-            text = self.ax.text(self.agents.positions[i], self.agents.lanes[i] + 0.1, text, ha='center', va='bottom', fontsize=6)
+            self.ax.text(self.agents.positions[i], self.agents.lanes[i] + 0.1, text, ha='center', va='bottom', fontsize=6)
+
         self.fig.canvas.draw_idle()
 
 
@@ -85,8 +93,8 @@ if __name__ == '__main__':
     slowdown = 0.2
 
     n_agents = int(density * n_lanes * lane_length)
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length)
-    model = Model(agents=agents, slowdown=slowdown)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, bias_strength=0.5)
+    model = SwitchingNaSchModel(agents=agents, slowdown=slowdown)
 
     for _ in range(100):
         model.step()

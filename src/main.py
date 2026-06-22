@@ -13,7 +13,7 @@ def run_simulation(params):
     if (n_agents == 0):
         return 0.0, 0.0, 0.0, 0.0
 
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, v_max=v_max, experience_vs_immediate=0.6, rationality=15, loss_factor=3)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, v_max=v_max, info_preference=0.6, rationality=15, loss_factor=3)
     model = Model(agents=agents, slowdown=slowdown)
 
     # run for a given number of steps, such that we are likely to be in a state approximating equilibrium
@@ -52,7 +52,6 @@ def run_simulation(params):
     # custom order parameter for the full range, where we measure what fraction of the max possible speed is achieved. The max possible speed, given global knowledge, is ~ min (v_max, (1-rho) / rho)
     optimal_avg_speed = min(model.agents.v_max, (1 - density) / density)
     M4 = avg_velocity / optimal_avg_speed
-    # TODO: maybe use the Gini coefficient as order parameter? Might be more robust then just the fraction of vehicles with velocity 0
 
     return flow, avg_velocity, M3, M4
 

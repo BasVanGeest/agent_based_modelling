@@ -29,7 +29,7 @@ def run_simulation(params):
         risk_factor=risk_factor,
         loss_factor=loss_factor,
         loss_scale=loss_scale,
-        experience_vs_immediate=history_vs_current,
+        info_preference=history_vs_current,
         learning_rate=learning_rate,
         rationality=rationality
     )
