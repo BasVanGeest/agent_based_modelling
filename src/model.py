@@ -1,35 +1,119 @@
 from agent import Agents
 
 import numpy as np
+import numpy.typing as npt
 
-class Model:
-    def __init__(self, agents : Agents, slowdown = 0.05):
+class BaseNaSchModel:
+    """
+    This class implements the Nagel-Schrekenberg model. Being associated with traffic flow, it consists of a set of agents, moving along a discrete line. Each step, agents try to accelerate, limited by the number of empty spaces ahead of each agent. Here the model is extended to run multiple lanes at the same time, without any mechanism for interaction between lanes.
+
+    Attributes
+    --------------
+    agents : Agents
+        list of agents in use
+    slowdown: float
+        percentage chance of a given agent slowing down
+    step_count: int
+        counts the number of finished iterations
+    """
+
+
+    def __init__(
+        self, 
+        agents: Agents, 
+        slowdown: float = 0.05
+    ) -> None:
+        """
+        Initialises the model, by moving input data into member variables and resetting the step count.
+        
+        Parameters:
+        --------------
+        agents : Agents
+            list of agents in use
+        slowdown: float
+            percentage chance of a given agent slowing down
+        """
+
         self.agents = agents
         self.slowdown = slowdown
         self.step_count = 0
 
 
-    def step(self):
+    def step(self) -> None:
+        """
+        Runs a single iteration of the model. Applies the NaSch rules for all agents, then updates their velocity.
+        """
+
+        self.agents.update_velocities(self.slowdown)
+        self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
+        self.step_count += 1
+
+
+
+class SwitchingNaSchModel(BaseNaSchModel):
+    """
+    This class implements an extension onto the base Nagel-Schrekenberg model, where interaction between lanes is defined. On top of the standard NaSch behaviour, agents now make a probabilistic guess based on their velocity history and local information what lane to switch to. Agent histories are updated each step.
+
+    Attributes
+    --------------
+    agents : Agents
+        list of agents in use
+    slowdown: float
+        percentage chance of a given agent slowing down
+    step_count: int
+        counts the number of finished iterations
+    """
+
+
+    def __init__(
+        self, 
+        agents: Agents, 
+        slowdown: float = 0.05
+    ) -> None:
+        """
+        Initialises the model, by moving input data into member variables and resetting the step count.
+        
+        Parameters
+        --------------
+        agents : Agents
+            list of agents in use
+        slowdown: float
+            percentage chance of a given agent slowing down
+        """
+        super().__init__(agents, slowdown)
+
+
+    def step(self) -> None:
+        """
+        Runs a single iteration of the switching model. Generates chosen lanes for each agent, tries to apply them, applies the standard NaSch step and updates the agent histories.
+        """
         # step 1: compute gaps and let each vehicle make a decision on if / where to switch
-        choices, gaps = self.agents.choose_actions()
+        choices = self.agents.choose_actions()
 
         # step 2: apply lane changing, in random order, checking for collisions
         applied_choices = self.apply_choices(choices)
 
         # step 3: NaSch velocity update
-        self.agents.update_velocities(self.slowdown)
+        super().step()
 
-        # TODO: don't accelerate (and slowdown) if the vehicle switched
-        # step 4: update vehicle positions
-        self.agents.positions = (self.agents.positions + self.agents.velocities) % self.agents.lane_length
-
-        # step 5: compute reward and update agent strategy
-        self.agents.update_weights(applied_choices, self.agents.velocities)
-
-        self.step_count += 1
+        # step 4: Update agents histories
+        self.agents.update_histories(applied_choices, self.agents.velocities)
 
 
-    def apply_choices(self, choices):
+    def apply_choices(self, choices: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
+        """
+        Tries to apply a given set of choices for each agent. It goes through all agents in random order, then tries to apply the lane-switch if possible. If not, it stays on its current lane. The list of applied choices (going left, staying or going right) is returned.
+
+        Parameters
+        --------------
+        choices : npt.NDArray[np.int_]
+            array of choices, of identical length to the number of agents
+
+        Returns
+        --------------
+        npt.NDArray[np.int_]
+            array of choices that were applied, of identical length to the number of agents
+        """
         n_agents = self.agents.n_agents
         applied_choices = np.ones(n_agents, dtype=int)
 

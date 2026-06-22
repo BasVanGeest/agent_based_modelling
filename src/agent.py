@@ -114,9 +114,6 @@ class Agents:
 
 
     def choose_actions(self):
-        # TODO: maybe only consider switching if you expect to not be able to accelerate while staying
-        # TODO: maybe don't allow switching when your current velocity is 0
-
         # compute the gaps to the next vehicle ahead, for each vehicle, for each option
         forward_gaps = self.compute_gaps()
 
@@ -163,7 +160,7 @@ class Agents:
         random_values = np.random.random(self.n_agents) + 1e-10 # add a tiny amount, to aviod the edgecase where if the left option is non-viable, and the random-value is exactly 0, it would choose moving left anyway
         choices = np.argmax(cumulative_sum >= random_values[:, np.newaxis], axis=1)
         
-        return choices, forward_gaps
+        return choices
 
 
     def update_velocities(self, slowdown):
@@ -174,5 +171,5 @@ class Agents:
         self.velocities = np.where((self.velocities > 0) & (random_values < slowdown), self.velocities - 1, self.velocities) # janky way of reducing velocity by 1 by a given percentage, if it wasn't zero already
 
 
-    def update_weights(self, choices, velocities):
+    def update_histories(self, choices, velocities):
         self.choice_velocity_history[np.arange(self.n_agents), choices] = (1 - self.learning_rate) * self.choice_velocity_history[np.arange(self.n_agents), choices] + self.learning_rate * velocities
