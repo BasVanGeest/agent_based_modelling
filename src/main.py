@@ -13,7 +13,7 @@ def run_simulation(params):
     if (n_agents == 0):
         return 0.0, 0.0, 0.0, 0.0
 
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, v_max=v_max)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, v_max=v_max, experience_vs_immediate=0.6, rationality=15, loss_factor=3)
     model = Model(agents=agents, slowdown=slowdown)
 
     # run for a given number of steps, such that we are likely to be in a state approximating equilibrium
@@ -60,9 +60,9 @@ def run_simulation(params):
 n_lanes = 3
 lane_length = 100
 v_max = 5
-samples = 20
-n_steps = 1000
-n_measure_steps = 500
+samples = 10
+n_steps = 100
+n_measure_steps = 100
 
 densities = np.linspace(0.05, 0.9, 20)
 slowdowns = np.linspace(0.01, 0.99, 20)

@@ -88,7 +88,7 @@ if __name__ == '__main__':
     agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length)
     model = Model(agents=agents, slowdown=slowdown)
 
-    for _ in range(1000):
+    for _ in range(100):
         model.step()
     
     visualizer = BasicStepwiseVisualizer(agents, model, trail_length=3)

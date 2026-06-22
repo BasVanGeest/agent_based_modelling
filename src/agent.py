@@ -137,15 +137,26 @@ class Agents:
         loss_mask = delta < 0
         utility[gain_mask] = np.pow(delta[gain_mask], self.risk_factor)
         utility[loss_mask] = -self.loss_scale * np.pow(-delta[loss_mask], self.loss_factor)
-        # add small negative bias, nudging away from switching
-        utility[:, [0, 2]] -= 1
+        # add small negative bias for specific scenarios, if we want to
+        # utility[:, [0, 2]] -= 1
 
         # account for bounded rationality using logit assumption
-        utility_exp = np.multiply(viable_options, np.exp(self.rationality * utility))
-        probabilities = utility_exp / np.sum(utility_exp, axis=1)[:, np.newaxis]
+        max_utility = np.max(utility, axis=1, keepdims=True)
+        utility_exp = np.multiply(viable_options, np.exp(self.rationality * (utility - max_utility))) # translate by the max, so we avoid float overflow for high rationality
+        sum_exp = np.sum(utility_exp, axis=1, keepdims=True)
 
-        # TODO: add loss aversion? It seems like a hard requirement from the project requirements list. Maybe ask TA's about it
-        # TODO: use nested logit? surely if say, moving left isn't possible / removed, then most of the probability of going left goes to switching right; Not equally to staying and switch right. So we don't really have IIA here
+        probabilities = np.zeros_like(utility_exp, dtype=float)
+
+        # non-zero sum rows
+        valid_rows = (sum_exp.flatten() > 0)
+        if np.any(valid_rows):
+            probabilities[valid_rows] = utility_exp[valid_rows] / sum_exp[valid_rows]
+
+        # zero sum rows
+        if np.any(~valid_rows):
+            num_viable = np.sum(viable_options, axis=1, keepdims=True)
+            uniform_probs = viable_options / num_viable
+            probabilities[~valid_rows] = uniform_probs[~valid_rows]
         
         # make the choice between the viable options
         cumulative_sum = np.cumsum(probabilities, axis=1)
