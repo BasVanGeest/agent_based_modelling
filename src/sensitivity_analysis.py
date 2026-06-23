@@ -1,5 +1,5 @@
 from agent import Agents
-from model import Model
+from model import BaseNaSchModel, SwitchingNaSchModel
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import itertools
 
 
 def run_simulation(params):
-    lane_length, n_lanes, density, slowdown, v_max, learning_rate, risk_factor, loss_factor, loss_scale, rationality, history_vs_current = params
+    lane_length, n_lanes, density, slowdown, v_max, learning_rate, risk_factor, loss_factor, loss_scale, rationality, info_preference, bias_strength = params
 
     n_lanes = int(round(n_lanes))
     lane_length = int(round(lane_length))
@@ -29,11 +29,12 @@ def run_simulation(params):
         risk_factor=risk_factor,
         loss_factor=loss_factor,
         loss_scale=loss_scale,
-        info_preference=history_vs_current,
+        bias_strength=bias_strength,
+        info_preference=info_preference,
         learning_rate=learning_rate,
         rationality=rationality
     )
-    model = Model(agents=agents, slowdown=slowdown)
+    model = SwitchingNaSchModel(agents=agents, slowdown=slowdown)
 
     for _ in range(n_steps):
         model.step()
@@ -63,17 +64,17 @@ def run_parameter_set(params, replicates):
 
 
 if __name__ == "__main__":
-    distinct_samples = 1024
-    replicates = 5
-    n_steps = 1000
-    n_sample_steps = 100
+    distinct_samples = 4096
+    replicates = 10
+    n_steps = 100
+    n_sample_steps = 50
 
     cache_file = "sobol_results.pkl"
 
     problem = {
-        'num_vars': 11,
-        'names': ['lane_length', 'n_lanes', 'density', 'slowdown', 'v_max', 'learning_rate', 'risk_factor', 'loss_factor', 'loss_scale', 'rationality', 'history_vs_current'],
-        'bounds': [[25, 250], [1, 5], [0.05, 0.95], [0.05, 0.95], [1, 5], [0, 1], [0.5, 1.5], [0.5, 2.5], [1, 3], [1, 10], [0, 1]]
+        'num_vars': 12,
+        'names': ['lane_length', 'n_lanes', 'density', 'slowdown', 'v_max', 'learning_rate', 'risk_factor', 'loss_factor', 'loss_scale', 'rationality', 'info_preference', 'bias_strength'],
+        'bounds': [[25, 250], [1, 7], [0.05, 0.95], [0.05, 0.95], [1, 5], [0, 1], [0.5, 1.5], [0.5, 2.5], [1, 5], [1, 10], [0, 1], [0, 1.5]]
     }
 
     param_values = sobol_sample.sample(problem, distinct_samples)
