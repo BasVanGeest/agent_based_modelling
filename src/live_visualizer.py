@@ -99,7 +99,7 @@ if __name__ == '__main__':
     # agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
 
     n_agents = int(density * n_lanes * lane_length)
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, bias_strength=0.5)
     model = SwitchingNaSchModel(agents=agents, slowdown=slowdown)
 
     for _ in range(100):

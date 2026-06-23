@@ -165,11 +165,9 @@ def plot_generics(
         if 'flow' in plot_names:
             ax = axes[row_index, experiment_index]
             cont = ax.contourf(X, Y, data['flow_mean'], levels=20, cmap='viridis', vmin=0, vmax=1)
-            ax.set_xlabel(r'$\rho$')
+            ax.set_xlabel('density')
             ax.set_ylabel('slowdown probability')
             ax.text(0.98, 0.97, 'mean flow', transform=ax.transAxes, fontsize=10, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="black", alpha=0.7))
-            #if experiment_index == 0:
-            #    ax.text(-0.25, 0.5, 'mean flow', transform=ax.transAxes, rotation=90, va='center', ha='center', fontsize=12)
             if experiment_index == n_experiments - 1:
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
@@ -179,11 +177,9 @@ def plot_generics(
         if 'velocity' in plot_names:
             ax = axes[row_index, experiment_index]
             cont = ax.contourf(X, Y, data['velocity_mean'], levels=20, cmap='viridis', vmin=0, vmax=v_max)
-            ax.set_xlabel(r'$\rho$')
+            ax.set_xlabel('density')
             ax.set_ylabel('slowdown probability')
             ax.text(0.98, 0.97, 'mean velocity', transform=ax.transAxes, fontsize=10, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="black", alpha=0.7))
-            #if experiment_index == 0:
-            #    ax.text(-0.25, 0.5, 'mean velocity', transform=ax.transAxes, rotation=90, va='center', ha='center', fontsize=12)
             if experiment_index == n_experiments - 1:
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
@@ -193,11 +189,9 @@ def plot_generics(
         if 'M3' in plot_names:
             ax = axes[row_index, experiment_index]
             cont = ax.contourf(X, Y, data['M3_mean'], levels=20, cmap='viridis', vmin=0, vmax=1)
-            ax.set_xlabel(r'$\rho$')
+            ax.set_xlabel('density')
             ax.set_ylabel('slowdown probability')
             ax.text(0.98, 0.97, r'$M_3$ (fraction stopped)', transform=ax.transAxes, fontsize=10, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="black", alpha=0.7))
-            #if experiment_index == 0:
-            #    ax.text(-0.25, 0.5, r'$M_3$ (fraction stopped)', transform=ax.transAxes, rotation=90, va='center', ha='center', fontsize=12)
             if experiment_index == n_experiments - 1:
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
@@ -207,11 +201,9 @@ def plot_generics(
         if 'M4' in plot_names:
             ax = axes[row_index, experiment_index]
             cont = ax.contourf(X, Y, data['M4_mean'], levels=20, cmap='viridis', vmin=0, vmax=1)
-            ax.set_xlabel(r'$\rho$')
+            ax.set_xlabel('density')
             ax.set_ylabel('slowdown probability')
             ax.text(0.98, 0.97, r'$M_4$ (efficiency)', transform=ax.transAxes, fontsize=10, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="black", alpha=0.7))
-            #if experiment_index == 0:
-            #    ax.text(-0.25, 0.5, r'$M_4$ (efficiency)', transform=ax.transAxes, rotation=90, va='center', ha='center', fontsize=12)
             if experiment_index == n_experiments - 1:
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
@@ -225,7 +217,7 @@ def plot_generics(
 
 
 if __name__ == "__main__":
-    n_lanes, lane_length, v_max = 5, 100, 1
+    n_lanes, lane_length, v_max = 3, 100, 5
     samples, n_steps, n_measure_steps = 5, 100, 100
 
     baseline_data = take_measurements(
@@ -239,13 +231,6 @@ if __name__ == "__main__":
         n_measure_steps=n_measure_steps
     )
 
-    baseline_figure = plot_generics(
-        data_list=[baseline_data, baseline_data, baseline_data],
-        plot_names=['flow', 'M3'],
-        v_max=v_max
-    )
-
-    """
     history_data = take_measurements(
         model_class=SwitchingNaSchModel,
         n_lanes=n_lanes,
@@ -262,7 +247,7 @@ if __name__ == "__main__":
         n_lanes=n_lanes,
         lane_length=lane_length,
         v_max=v_max,
-        bias_strength=0.5,
+        bias_strength=1.0,
         samples=samples,
         n_steps=n_steps,
         n_measure_steps=n_measure_steps
@@ -274,6 +259,5 @@ if __name__ == "__main__":
         plot_names=['flow', 'M3'],
         v_max=v_max
     )
-    """
 
     plt.show()
