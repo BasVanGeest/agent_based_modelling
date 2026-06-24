@@ -10,8 +10,6 @@ def run_simulation(params):
     (model_class, n_lanes, lane_length, v_max, bias_strength, rho, p, n_steps, n_measure_steps, model_kwargs) = params
 
     n_agents = int(rho * n_lanes * lane_length)
-    if (n_agents == 0):
-        return 0.0, 0.0, 0.0, 0.0
 
     agents = Agents(
         n_agents=n_agents,
@@ -41,7 +39,7 @@ def run_simulation(params):
 
         stopped_fraction = np.mean(model.agents.velocities == 0)
         total_stopped_fraction += stopped_fraction
-    
+
     # calculate the actual metrics
     avg_velocity = total_vel / n_measure_steps
     flow = total_flow / n_measure_steps
@@ -215,11 +213,159 @@ def plot_generics(
 
     return fig
 
+def run_histogram_replicates(
+    model_class,
+    n_lanes,
+    lane_length,
+    v_max,
+    bias_strength,
+    rho,
+    p,
+    n_steps,
+    n_measure_steps,
+    replicates,
+    **model_kwargs
+):
+    occupancy_accum = np.zeros(n_lanes)
+    velocity_sum_accum = np.zeros(n_lanes)
+    count_accum = np.zeros(n_lanes)
+    velocity_hist_accum = np.zeros(v_max + 1)
+
+    for _ in range(replicates):
+        n_agents = int(rho * n_lanes * lane_length)
+        agents = Agents(
+            n_agents=n_agents,
+            n_lanes=n_lanes,
+            lane_length=lane_length,
+            v_max=v_max,
+            bias_strength=bias_strength,
+            **model_kwargs
+        )
+        model = model_class(agents=agents, slowdown=p)
+
+        for _ in range(n_steps):
+            model.step()
+
+        lane_occupancy = np.zeros(n_lanes)
+        lane_vel_sum = np.zeros(n_lanes)
+        lane_count = np.zeros(n_lanes)
+        vel_hist = np.zeros(v_max + 1)
+
+        for _ in range(n_measure_steps):
+            model.step()
+
+            # statistics
+            for lane in range(n_lanes):
+                mask = (agents.lanes == lane)
+                lane_occupancy[lane] += np.sum(mask) / n_agents
+                lane_vel_sum[lane] += np.sum(agents.velocities[mask])
+                lane_count[lane] += np.sum(mask)
+
+            vel_counts = np.bincount(agents.velocities, minlength=v_max + 1)
+            vel_hist += vel_counts / n_agents
+
+        lane_occupancy /= n_measure_steps
+        lane_vel_sum /= n_measure_steps
+        lane_count /= n_measure_steps
+        vel_hist /= n_measure_steps
+
+        occupancy_accum += lane_occupancy
+        velocity_sum_accum += lane_vel_sum
+        count_accum += lane_count
+        velocity_hist_accum += vel_hist
+
+    # average over replicates, checking for division by zero :/
+    occupancy_per_lane = occupancy_accum / replicates
+    avg_velocity_per_lane = np.divide(
+        velocity_sum_accum / replicates,
+        count_accum / replicates,
+        out=np.zeros(n_lanes),
+        where=(count_accum / replicates > 0)
+    )
+    velocity_histogram = velocity_hist_accum / replicates
+
+    return occupancy_per_lane, avg_velocity_per_lane, velocity_histogram
+
+def plot_histograms(
+    hist_data_list,
+    v_max,
+    title
+):
+    fig, axes = plt.subplots(2, len(hist_data_list), figsize=(15, 6))
+
+    for i, data in enumerate(hist_data_list):
+        lane_indices = np.arange(len(data['occupancy']))
+        width = 0.35
+
+        # top row: occupancy and velocity
+        ax = axes[0, i]
+        occupancy = data['occupancy']
+
+        # velocity fraction, normalised by v_max
+        velocity_fraction = data['avg_velocity'] / v_max
+        ax.bar(lane_indices - width/2, occupancy, width, label='Occupancy', color='steelblue', edgecolor='black')
+        ax.bar(lane_indices + width/2, velocity_fraction, width, label='Velocity', color='coral', edgecolor='black')
+        ax.set_xlabel('Lane index')
+        ax.set_ylabel('Fraction')
+        ax.set_title(f'Lane metrics ({data["label"]})')
+        ax.set_ylim(0, 1)
+        ax.legend()
+
+        # bottom row: velocity distribution
+        ax = axes[1, i]
+        velocities = np.arange(len(data['vel_hist']))
+        ax.bar(velocities, data['vel_hist'], color='steelblue', edgecolor='black')
+        ax.set_xlabel('Velocity')
+        ax.set_ylabel('Fraction of vehicles')
+        ax.set_title(f'Velocity distribution ({data["label"]})')
+        ax.set_ylim(0, 1)
+
+    fig.suptitle(title, fontsize=14)
+
+    plt.tight_layout()
+    return fig
+
 
 if __name__ == "__main__":
     n_lanes, lane_length, v_max = 3, 100, 5
-    samples, n_steps, n_measure_steps = 5, 100, 100
+    samples, n_steps, n_measure_steps = 5, 100, 50
 
+    # histograms
+    density_histogram = 0.3
+    slowdown_histogram = 0.8
+    hist_replicates = 25
+
+    # not the most elegant way of doing this, but it should be sufficient for now
+    hist_data = []
+    for model, label, bias in zip([BaseNaSchModel, SwitchingNaSchModel, SwitchingNaSchModel], ['Baseline NaSch', 'Historic Switching', 'Biased Switching'], [0.0, 0.0, 0.5]):
+        occupancy, avg_velocity, vel_hist = run_histogram_replicates(
+            model_class=model,
+            n_lanes=n_lanes,
+            lane_length=lane_length,
+            v_max=v_max,
+            bias_strength=bias,
+            rho=density_histogram,
+            p=slowdown_histogram,
+            n_steps=n_steps,
+            n_measure_steps=n_measure_steps,
+            replicates=hist_replicates,
+        )
+        hist_data.append({
+            'occupancy': occupancy,
+            'avg_velocity': avg_velocity,
+            'vel_hist': vel_hist,
+            'label': label
+        })
+
+    hist_fig = plot_histograms(
+        hist_data,
+        v_max=v_max,
+        title=f'Histograms at ρ={density_histogram}, p={slowdown_histogram}'
+    )
+    plt.show()
+
+
+    # macroscopic overview
     baseline_data = take_measurements(
         model_class=BaseNaSchModel,
         n_lanes=n_lanes,
