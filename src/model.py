@@ -1,4 +1,4 @@
-from agent import Agents
+from agent import Action, Agents
 
 import numpy as np
 import numpy.typing as npt
@@ -130,7 +130,7 @@ class SwitchingNaSchModel(BaseNaSchModel):
             lane = self.agents.lanes[agent_index]
             position = self.agents.positions[agent_index]
 
-            if choice == 1:
+            if choice == Action.STAY:
                 continue
             
             target_lane = lane - 1 + choice

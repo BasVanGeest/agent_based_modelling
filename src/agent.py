@@ -1,5 +1,11 @@
 import numpy as np
 import numpy.typing as npt
+from enum import IntEnum
+
+class Action(IntEnum):
+    LEFT = 0
+    STAY = 1
+    RIGHT = 2
 
 class Agents:
     """
@@ -198,9 +204,9 @@ class Agents:
         # add bias depending on the option, such that all vehicles have a preference to move right: approximating certain traffic 'rules'
         # also add a bias, accounting for a bias towards a specific action: staying
         # TODO: this addition of a bias towards staying makes a massive difference in the degree to which the M3 results are shifted; for no bias like this, jams pop up for almost all point in phase space
-        raw_utility[:, [0, 2]] -= 1 # bias towards staying
-        raw_utility[:, 0] -= self.bias_strength
-        raw_utility[:, 2] += self.bias_strength
+        raw_utility[:, [Action.LEFT, Action.RIGHT]] -= 1 # bias towards staying
+        raw_utility[:, Action.LEFT] -= self.bias_strength
+        raw_utility[:, Action.RIGHT] += self.bias_strength
 
         # apply loss + risk aversion using the prospect theory expression
         references = self.velocities[:, np.newaxis]

@@ -1,11 +1,10 @@
-from agent import Agents
+from agent import Action, Agents
 from model import BaseNaSchModel, SwitchingNaSchModel
 
 import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from tqdm.contrib.concurrent import process_map
-from enum import Enum
 
 def run_simulation(params):
     (model_class, n_lanes, lane_length, v_max, bias_strength, rho, p, n_steps, n_measure_steps, model_kwargs) = params
@@ -41,7 +40,7 @@ def run_simulation(params):
 
         # if the given model type doesn't store applied_choices, assume it is non-switching: switch rate stays 0
         if hasattr(model, 'applied_choices'):
-            total_switch_rate += np.sum(model.applied_choices != 1) / n_agents
+            total_switch_rate += np.sum(model.applied_choices != Action.STAY) / n_agents
         else:
             total_switch_rate += 0.0
 
@@ -143,13 +142,6 @@ def take_measurements(
         'M4_std': M4_std,
         'switch_rate_mean': switch_rate_mean
     }
-
-class PlotName(Enum):
-    FLOW = 'flow'
-    VELOCITY = 'velocity'
-    M3 = 'M3'
-    M4 = 'M4'
-    SWITCH_RATE = 'switch_rate'
 
 def plot_generics(
         data_list, 
@@ -449,7 +441,7 @@ if __name__ == "__main__":
     baseline_figure = plot_generics(
         data_list=[baseline_data, history_data, biased_data],
         labels=['Baseline NaSch', 'Historic Switching', 'Biased Switching'],
-        plot_names=[PlotName.M3, PlotName.SWITCH_RATE],
+        plot_names=['M3', 'switch_rate'],
         v_max=v_max
     )
 
