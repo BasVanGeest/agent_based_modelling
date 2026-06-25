@@ -62,6 +62,8 @@ class SwitchingNaSchModel(BaseNaSchModel):
         percentage chance of a given agent slowing down
     step_count: int
         counts the number of finished iterations
+    applied_choices: npt.NDArray[np.int_]
+        stores the applied choices of the last step
     """
 
 
@@ -91,13 +93,13 @@ class SwitchingNaSchModel(BaseNaSchModel):
         choices = self.agents.choose_actions()
 
         # step 2: apply lane changing, in random order, checking for collisions
-        applied_choices = self.apply_choices(choices)
+        self.applied_choices = self.apply_choices(choices)
 
         # step 3: NaSch velocity update
         super().step()
 
         # step 4: Update agents histories
-        self.agents.update_histories(applied_choices, self.agents.velocities)
+        self.agents.update_histories(self.applied_choices, self.agents.velocities)
 
 
     def apply_choices(self, choices: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:

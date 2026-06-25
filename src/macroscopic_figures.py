@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, cpu_count
 from tqdm.contrib.concurrent import process_map
+from enum import Enum
 
 def run_simulation(params):
     (model_class, n_lanes, lane_length, v_max, bias_strength, rho, p, n_steps, n_measure_steps, model_kwargs) = params
@@ -28,6 +29,7 @@ def run_simulation(params):
     total_vel = 0.0
     total_flow = 0.0
     total_stopped_fraction = 0.0
+    total_switch_rate = 0.0
 
     # assuming we're in equilibrium, estimate measures over a small number of steps
     for _ in range(n_measure_steps):
@@ -37,12 +39,20 @@ def run_simulation(params):
         total_vel += avg_velocity
         total_flow += avg_velocity * rho
 
+        # if the given model type doesn't store applied_choices, assume it is non-switching: switch rate stays 0
+        if hasattr(model, 'applied_choices'):
+            total_switch_rate += np.sum(model.applied_choices != 1) / n_agents
+        else:
+            total_switch_rate += 0.0
+
         stopped_fraction = np.mean(model.agents.velocities == 0)
         total_stopped_fraction += stopped_fraction
+
 
     # calculate the actual metrics
     avg_velocity = total_vel / n_measure_steps
     flow = total_flow / n_measure_steps
+    avg_switch_rate = total_switch_rate / n_measure_steps # avg switches per vehicle, per step
 
     # order parameter for the limit p -> 1, based on paper 'Criticality in Dynamic Arrest: Correspondence between Glasses and Traffic'
     freeflow_velocity = agents.v_max - p # avg velocity of vehicles in equilibrium, if no interaction was present (we don't break to keep distance, don't laneswap, etc...)
@@ -58,7 +68,7 @@ def run_simulation(params):
     optimal_avg_speed = min(model.agents.v_max, (1 - rho) / rho)
     M4 = avg_velocity / optimal_avg_speed
 
-    return flow, avg_velocity, M3, M4
+    return flow, avg_velocity, M3, M4, avg_switch_rate
 
 def take_measurements(
     model_class,
@@ -71,7 +81,7 @@ def take_measurements(
     n_measure_steps: int = 100,
     **model_kwargs
 ):
-    densities = np.linspace(0.05, 0.9, 20)
+    densities = np.linspace(0.01, 0.99, 20)
     slowdowns = np.linspace(0.01, 0.99, 20)
 
     # gather all combinations of parameters we want to test
@@ -96,7 +106,8 @@ def take_measurements(
     M3_std = np.zeros((n_rho, n_p))
     M4_mean = np.zeros((n_rho, n_p))
     M4_std = np.zeros((n_rho, n_p))
-
+    switch_rate_mean = np.zeros((n_rho, n_p))
+    
     idx = 0
     for i in range(n_rho):
         for j in range(n_p):
@@ -105,6 +116,7 @@ def take_measurements(
             velocities = [result[1] for result in block]
             M3 = [result[2] for result in block]
             M4 = [result[3] for result in block]
+            switch_rates = [result[4] for result in block]
 
             flow_mean[i, j] = np.mean(flows)
             flow_std[i, j] = np.std(flows)
@@ -114,6 +126,7 @@ def take_measurements(
             M3_std[i, j] = np.std(M3)
             M4_mean[i, j] = np.mean(M4)
             M4_std[i, j] = np.std(M4)
+            switch_rate_mean[i, j] = np.mean(switch_rates)
 
             idx += samples
 
@@ -127,8 +140,16 @@ def take_measurements(
         'M3_mean': M3_mean,
         'M3_std': M3_std,
         'M4_mean': M4_mean,
-        'M4_std': M4_std
+        'M4_std': M4_std,
+        'switch_rate_mean': switch_rate_mean
     }
+
+class PlotName(Enum):
+    FLOW = 'flow'
+    VELOCITY = 'velocity'
+    M3 = 'M3'
+    M4 = 'M4'
+    SWITCH_RATE = 'switch_rate'
 
 def plot_generics(
         data_list, 
@@ -137,7 +158,7 @@ def plot_generics(
         v_max: int = 5
     ):
     if plot_names is None:
-        plot_names = ['flow', 'velocity', 'M3', 'M4']
+        plot_names = ['flow', 'velocity', 'M3', 'M4', 'Switching rate']
     if labels is None:
         labels = ['Baseline NaSch', 'Historic Switching', 'Biased Switching']
 
@@ -194,6 +215,15 @@ def plot_generics(
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
 
+            # draw theoretical critical line of NaSch model
+            p_values = data['slowdowns']
+            rho_critical = (1 - p_values) / (v_max + 1 - 2 * p_values)
+            valid = (rho_critical >= 0) & (rho_critical <= 1)
+            ax.plot(rho_critical[valid], p_values[valid], 'r--', linewidth=1.5)
+
+            ax.set_xlim(0.01, 0.99)
+            ax.set_ylim(0.01, 0.99)
+
             row_index += 1
 
         if 'M4' in plot_names:
@@ -205,6 +235,23 @@ def plot_generics(
             if experiment_index == n_experiments - 1:
                 bar_axis = axes[row_index, -1]
                 fig.colorbar(cont, cax=bar_axis) 
+
+            row_index += 1
+
+        if 'switch_rate' in plot_names:
+            ax = axes[row_index, experiment_index]
+            cont = ax.contourf(X, Y, data['switch_rate_mean'], levels=20, cmap='viridis')
+            ax.set_xlabel('density')
+            ax.set_ylabel('slowdown probability')
+            ax.text(0.98, 0.97, 'Switching rate', transform=ax.transAxes, fontsize=10, ha='right', va='top', bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="black", alpha=0.7))
+            if experiment_index == n_experiments - 1:
+                bar_axis = axes[row_index, -1]
+                fig.colorbar(cont, cax=bar_axis) 
+
+            ax.plot(rho_critical[valid], p_values[valid], 'r--', linewidth=1.5)
+
+            ax.set_xlim(0.01, 0.99)
+            ax.set_ylim(0.01, 0.99)
 
             row_index += 1
 
@@ -402,7 +449,7 @@ if __name__ == "__main__":
     baseline_figure = plot_generics(
         data_list=[baseline_data, history_data, biased_data],
         labels=['Baseline NaSch', 'Historic Switching', 'Biased Switching'],
-        plot_names=['flow', 'M3'],
+        plot_names=[PlotName.M3, PlotName.SWITCH_RATE],
         v_max=v_max
     )
 
