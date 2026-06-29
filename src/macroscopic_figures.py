@@ -80,8 +80,8 @@ def take_measurements(
     n_measure_steps: int = 100,
     **model_kwargs
 ):
-    densities = np.linspace(0.01, 0.99, 20)
-    slowdowns = np.linspace(0.01, 0.99, 20)
+    densities = np.linspace(0.01, 0.99, 30)
+    slowdowns = np.linspace(0.01, 0.99, 30)
 
     # gather all combinations of parameters we want to test
     params_list = []
@@ -367,7 +367,7 @@ def plot_histograms(
 
 if __name__ == "__main__":
     n_lanes, lane_length, v_max = 3, 100, 5
-    samples, n_steps, n_measure_steps = 5, 100, 50
+    samples, n_steps, n_measure_steps = 15, 100, 50
 
     # histograms
     density_histogram = 0.3
@@ -441,7 +441,7 @@ if __name__ == "__main__":
     baseline_figure = plot_generics(
         data_list=[baseline_data, history_data, biased_data],
         labels=['Baseline NaSch', 'Historic Switching', 'Biased Switching'],
-        plot_names=['M3', 'switch_rate'],
+        plot_names=['flow', 'M3', 'switch_rate'],
         v_max=v_max
     )
 

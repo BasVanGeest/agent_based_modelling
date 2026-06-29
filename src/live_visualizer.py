@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 from matplotlib.widgets import Button
 
@@ -11,91 +12,103 @@ class BasicStepwiseVisualizer:
         self.model = model
         self.trail_length = trail_length
 
-        # give a unique color for each vehicle, so they (hopefully) are better to track between steps
-        cmap = plt.get_cmap('hsv')
-        self.agent_colors = [cmap(i / self.agents.n_agents) for i in range(self.agents.n_agents)]
+        # Generate distinct, bright colors
+        self.agent_colors = self._get_agent_colors(agents.n_agents)
 
-        # store the last few positions, so we can plot the last few steps made by each (it shows a trail behind each vehicle, making it clearer if switches are used or not and how)
-        # this should probably be a numpy 2D array, but I can't be arsed
+        # History: list of (lane, position) per agent
         self.history = [[] for _ in range(agents.n_agents)]
 
-        self.fig, self.ax = plt.subplots(figsize=(12, 6))
-        self.fig.subplots_adjust(bottom=0.2) # leaving some space for the step button
+        self.fig, self.ax = plt.subplots(figsize=(4, 12))
+        self.fig.subplots_adjust(bottom=0.2)
 
         ax_button = plt.axes([0.8, 0.05, 0.1, 0.05])
-        self.button = Button(ax_button, 'step forward')
+        self.button = Button(ax_button, 'step')
         self.button.on_clicked(self.next_step)
 
-        # Define grid 
-        self.ax.set_xlim(-1, agents.lane_length)
-        self.ax.set_ylim(-0.5, agents.n_lanes - 0.5)
-        self.ax.invert_yaxis()
-        self.ax.set_yticks(np.arange(self.agents.n_lanes))
-        
-        self.ax.yaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
-        self.ax.xaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
-        self.ax.set_xlabel('Position along lane')
-        self.ax.set_ylabel('Lane number')
+        # Axes: x = lane, y = position
+        self.ax.set_xlim(-0.5, agents.n_lanes - 0.5)
+        self.ax.set_ylim(-1, agents.lane_length)
+        self.ax.set_xticks(np.arange(agents.n_lanes))
+        self.ax.set_xlabel('Lane number')
+        self.ax.set_ylabel('Position along lane')
         self.ax.set_title('Traffic Simulation (Step 0)')
 
+        self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
+        self.ax.yaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
+
+        # Record initial positions (lane, position)
         for i in range(agents.n_agents):
-            self.history[i].append((agents.positions[i], agents.lanes[i]))
+            self.history[i].append((agents.lanes[i], agents.positions[i]))
 
         self.redraw()
 
+    def _get_agent_colors(self, n):
+        """
+        Generate n distinct, bright colors that contrast well with white background.
+        Uses HSL: hue spread evenly, high saturation, moderate brightness.
+        """
+        colors = []
+        saturation = 0.9
+        brightness = 0.8   # high but not too high to avoid washing out
+        for i in range(n):
+            hue = i / n
+            # Optionally shift hue to avoid yellow (which is light on white)
+            # We don't shift; with brightness 0.8 it's fine.
+            rgb = mcolors.hsv_to_rgb((hue, saturation, brightness))
+            colors.append(rgb)
+        return colors
 
     def redraw(self):
         self.ax.clear()
 
-        # rebuild grid + limits
-        self.ax.set_xlim(-1, self.agents.lane_length)
-        self.ax.set_ylim(-0.5, self.agents.n_lanes - 0.5)
-        self.ax.invert_yaxis()
-        self.ax.set_yticks(np.arange(self.agents.n_lanes))
-
-        self.ax.yaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
-        self.ax.xaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
-        self.ax.set_xlabel('Position')
-        self.ax.set_ylabel('Lane')
+        self.ax.set_xlim(-0.5, self.agents.n_lanes - 0.5)
+        self.ax.set_ylim(-1, self.agents.lane_length)
+        self.ax.set_xticks(np.arange(self.agents.n_lanes))
+        self.ax.set_xlabel('Lane number')
+        self.ax.set_ylabel('Position along lane')
         self.ax.set_title(f'Traffic Simulation, step {self.model.step_count}')
 
-        # per agent, draw its trail with its unique color
-        for i in range(self.agents.n_agents):
-            agent_history = self.history[i]
-            if len(agent_history) > 1:
-                positions, lanes = zip(*agent_history)
-                self.ax.plot(positions, lanes, color=self.agent_colors[i], alpha=0.6, linestyle='-')
+        self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
+        self.ax.yaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
 
-        # draw cars as filled squares, each with its unique color
-        self.ax.scatter(self.agents.positions, self.agents.lanes, s=120, marker='s', color=self.agent_colors, zorder=2) # draw on top of the trails
-
+        # Trails
         for i in range(self.agents.n_agents):
-            velocity_histories = self.agents.histories[i]
-            text = f'[{velocity_histories[0]:.1f}, {velocity_histories[1]:.1f}, {velocity_histories[2]:.1f}]'
-            self.ax.text(self.agents.positions[i], self.agents.lanes[i] + 0.1, text, ha='center', va='bottom', fontsize=6)
+            hist = self.history[i]
+            if len(hist) > 1:
+                lanes, positions = zip(*hist)
+                self.ax.plot(lanes, positions, color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
+
+        # Cars
+        self.ax.scatter(
+            self.agents.lanes,
+            self.agents.positions,
+            s=200,
+            marker='s',
+            color=self.agent_colors,
+            zorder=2
+        )
 
         self.fig.canvas.draw_idle()
-
 
     def next_step(self, event):
         self.model.step()
 
-        # update agent trails
         for i in range(self.agents.n_agents):
-            self.history[i].append((self.agents.positions[i], self.agents.lanes[i]))
+            self.history[i].append((self.agents.lanes[i], self.agents.positions[i]))
             if len(self.history[i]) > self.trail_length:
                 self.history[i].pop(0)
 
         self.redraw()
 
+
 if __name__ == '__main__':
-    density = 0.2
-    n_lanes = 3
+    density = 0.15
+    n_lanes = 5
     lane_length = 30
     slowdown = 0.2
 
-    # TODO: look at the distribution of agents, their learned histories, and the number of switches, and velocities
-    # TODO: it seems like for some parameter combinations, vehicles roughly fall into separate groups: ones that switch rarely, and those that switch very often (crisscrossing through the whole thing)
+    # Future idea: look at the distribution of agents, their learned histories, and the number of switches, and velocities
+    # Future idea: it seems like for some parameter combinations, vehicles roughly fall into separate groups: ones that switch rarely, and those that switch very often (crisscrossing through the whole thing)
     # agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
 
     n_agents = int(density * n_lanes * lane_length)
