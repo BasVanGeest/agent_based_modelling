@@ -32,8 +32,8 @@ class BasicStepwiseVisualizer:
         self.ax.set_xlim(-0.5, agents.n_lanes - 0.5)
         self.ax.set_ylim(0, agents.lane_length)
         self.ax.set_xticks(np.arange(agents.n_lanes))
-        self.ax.set_xlabel('Lane number')
-        self.ax.set_ylabel('Position along lane')
+        self.ax.set_xlabel('Lane')
+        self.ax.set_ylabel('Position along Lane')
         self.ax.set_title('Traffic Simulation (Step 0)')
 
         self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
@@ -53,8 +53,8 @@ class BasicStepwiseVisualizer:
         self.ax.set_xlim(-0.5, self.agents.n_lanes - 0.5)
         self.ax.set_ylim(0, self.agents.lane_length)
         self.ax.set_xticks(np.arange(self.agents.n_lanes))
-        self.ax.set_xlabel('Lane number')
-        self.ax.set_ylabel('Position along lane')
+        self.ax.set_xlabel('Lane')
+        self.ax.set_ylabel('Position along Lane')
         self.ax.set_title(f'Traffic Simulation, step {self.model.step_count}')
 
         self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
@@ -110,17 +110,13 @@ class BasicStepwiseVisualizer:
 
 
 if __name__ == '__main__':
-    density = 0.15
+    density = 0.5
     n_lanes = 5
     lane_length = 30
     slowdown = 0.2
 
-    # Future idea: look at the distribution of agents, their learned histories, and the number of switches, and velocities
-    # Future idea: it seems like for some parameter combinations, vehicles roughly fall into separate groups: ones that switch rarely, and those that switch very often (crisscrossing through the whole thing)
-    # agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, info_preference=0.9, learning_rate=0.5)
-
     n_agents = int(density * n_lanes * lane_length)
-    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, bias_strength=0.5)
+    agents = Agents(n_agents=n_agents, n_lanes=n_lanes, lane_length=lane_length, bias_strength=0)
     model = SwitchingNaSchModel(agents=agents, slowdown=slowdown)
 
     for _ in range(100):
