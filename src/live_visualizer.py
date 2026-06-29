@@ -12,12 +12,16 @@ class BasicStepwiseVisualizer:
         self.model = model
         self.trail_length = trail_length
 
-        # Generate distinct, bright colors
-        self.agent_colors = self._get_agent_colors(agents.n_agents)
+        # generate unique, contrasting colors
+        self.agent_colors = []
+        for i in range(self.agents.n_agents):
+            rgb = mcolors.hsv_to_rgb((i/self.agents.n_agents, 0.9, 0.8))
+            self.agent_colors.append(rgb)
 
-        # History: list of (lane, position) per agent
+        # set up trail history arrays
         self.history = [[] for _ in range(agents.n_agents)]
 
+        # set up the general figure
         self.fig, self.ax = plt.subplots(figsize=(4, 12))
         self.fig.subplots_adjust(bottom=0.2)
 
@@ -25,9 +29,8 @@ class BasicStepwiseVisualizer:
         self.button = Button(ax_button, 'step')
         self.button.on_clicked(self.next_step)
 
-        # Axes: x = lane, y = position
         self.ax.set_xlim(-0.5, agents.n_lanes - 0.5)
-        self.ax.set_ylim(-1, agents.lane_length)
+        self.ax.set_ylim(0, agents.lane_length)
         self.ax.set_xticks(np.arange(agents.n_lanes))
         self.ax.set_xlabel('Lane number')
         self.ax.set_ylabel('Position along lane')
@@ -36,33 +39,19 @@ class BasicStepwiseVisualizer:
         self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
         self.ax.yaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
 
-        # Record initial positions (lane, position)
+        # record starting state
         for i in range(agents.n_agents):
             self.history[i].append((agents.lanes[i], agents.positions[i]))
 
         self.redraw()
 
-    def _get_agent_colors(self, n):
-        """
-        Generate n distinct, bright colors that contrast well with white background.
-        Uses HSL: hue spread evenly, high saturation, moderate brightness.
-        """
-        colors = []
-        saturation = 0.9
-        brightness = 0.8   # high but not too high to avoid washing out
-        for i in range(n):
-            hue = i / n
-            # Optionally shift hue to avoid yellow (which is light on white)
-            # We don't shift; with brightness 0.8 it's fine.
-            rgb = mcolors.hsv_to_rgb((hue, saturation, brightness))
-            colors.append(rgb)
-        return colors
 
     def redraw(self):
+        # clean up the figure, and add the basic setup back in
         self.ax.clear()
 
         self.ax.set_xlim(-0.5, self.agents.n_lanes - 0.5)
-        self.ax.set_ylim(-1, self.agents.lane_length)
+        self.ax.set_ylim(0, self.agents.lane_length)
         self.ax.set_xticks(np.arange(self.agents.n_lanes))
         self.ax.set_xlabel('Lane number')
         self.ax.set_ylabel('Position along lane')
@@ -71,12 +60,31 @@ class BasicStepwiseVisualizer:
         self.ax.xaxis.grid(linestyle='--', alpha=1.0, linewidth=1)
         self.ax.yaxis.grid(linestyle='--', alpha=0.3, linewidth=0.6)
 
-        # Trails
+        # draw trails, accounting for wrap-around effects
         for i in range(self.agents.n_agents):
-            hist = self.history[i]
-            if len(hist) > 1:
-                lanes, positions = zip(*hist)
-                self.ax.plot(lanes, positions, color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
+            history = self.history[i]
+            if len(history) <= 1:
+                continue
+
+            segments = []
+            segment = [history[0]]
+            for j in range(1, len(history)):
+                prev_lane, prev_pos = history[j - 1]
+                curr_lane, curr_pos = history[j]
+
+                # no wrap-around, so just draw the trail segment
+                if curr_pos >= prev_pos:
+                    self.ax.plot([prev_lane, curr_lane], [prev_pos, curr_pos], color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
+                else:
+                    # wrap-around, so draw in 2 parts
+                    distance = self.agents.lane_length - prev_pos + curr_pos
+                    if distance == 0:
+                        continue
+
+                    middle_point = (self.agents.lane_length - prev_pos) / distance
+                    middle_lane = prev_lane + middle_point * (curr_lane - prev_lane)
+                    self.ax.plot([prev_lane, middle_lane], [prev_pos, self.agents.lane_length], color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
+                    self.ax.plot([middle_lane, curr_lane], [0, curr_pos], color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
 
         # Cars
         self.ax.scatter(

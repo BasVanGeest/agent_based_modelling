@@ -344,10 +344,11 @@ def plot_histograms(
         velocity_fraction = data['avg_velocity'] / v_max
         ax.bar(lane_indices - width/2, occupancy, width, label='Occupancy', color='steelblue', edgecolor='black')
         ax.bar(lane_indices + width/2, velocity_fraction, width, label='Velocity', color='coral', edgecolor='black')
-        ax.set_xlabel('Lane index')
+        ax.set_xlabel('Lane')
         ax.set_ylabel('Fraction')
         ax.set_title(f'Lane metrics ({data["label"]})')
         ax.set_ylim(0, 1)
+        ax.set_xticks(lane_indices)
         ax.legend()
 
         # bottom row: velocity distribution
@@ -358,6 +359,7 @@ def plot_histograms(
         ax.set_ylabel('Fraction of vehicles')
         ax.set_title(f'Velocity distribution ({data["label"]})')
         ax.set_ylim(0, 1)
+        ax.set_xticks(velocities)
 
     fig.suptitle(title, fontsize=14)
 
