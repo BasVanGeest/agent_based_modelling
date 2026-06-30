@@ -13,7 +13,6 @@ import pickle
 import os
 import itertools
 
-
 def run_simulation(params):
     lane_length, n_lanes, density, slowdown, v_max, learning_rate, risk_factor, loss_factor, loss_scale, rationality, info_preference, bias_strength = params
 

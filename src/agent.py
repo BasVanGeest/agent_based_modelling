@@ -97,7 +97,18 @@ class Agents:
         self.velocities = np.zeros(self.n_agents, dtype=int)
 
 
-    def compute_stay_gaps(self):
+    def compute_stay_gaps(self) -> npt.NDArray[np.int_]:
+        """
+        Computes the gap ahead in its current lane for each agent.
+
+        The gap is defined as the number of empty cells between the agent and the next
+        vehicle directly, including the periodic boundary condition.
+
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Array of gaps, shape (n_agents). A gap of 0 means the agent has a vehicle straight ahead; no free space in between.
+        """
         gaps_stay = np.zeros(self.n_agents, dtype=int)
 
         for lane in range(self.n_lanes):
@@ -121,7 +132,20 @@ class Agents:
         return gaps_stay
 
 
-    def compute_gaps(self):
+    def compute_gaps(self) -> npt.NDArray[np.int_]:
+        """
+        Computes the forward gap for each agent for all three possible actions.
+
+        Returns a 2D array where for each agent, the three columns represent the gaps ahead if the agent were to:
+            - Column 0: Move to the left lane
+            - Column 1: Stay in the current lane
+            - Column 2: Move to the right lane
+
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Array of shape (n_agents, 3) containing the gap for each action.
+        """
         gaps = np.zeros(shape=(self.n_agents, 3), dtype=int)
 
         # compute front / center lane gaps, and store sorted positions for later gap computations for side-lanes
@@ -184,7 +208,23 @@ class Agents:
         return gaps
 
 
-    def choose_actions(self):
+    def choose_actions(self) -> npt.NDArray[np.int_]:
+        """
+        Select a lane-changing action for each agent using a bounded rationality multinomial logit rule.
+
+        The method computes a utility for each action (stay, left, right) based on:
+            - The history of achieved velocity per action.
+            - The immediate forward gap in each lane.
+            - A bias term favouring staying and directional bias.
+            - Prospect-theory loss aversion and risk aversion.
+
+        Invalid actions (like moving to a non-existent lane) are filtered out.
+
+        Returns
+        -------
+        npt.NDArray[np.int_]
+            Array of chosen actions, shape (n_agents), where 0 = left, 1 = stay, 2 = right.
+        """
         # compute the gaps to the next vehicle ahead, for each vehicle, for each option
         forward_gaps = self.compute_gaps()
 
@@ -202,8 +242,7 @@ class Agents:
         raw_utility = self.experience_vs_immediate * self.histories + (1 - self.experience_vs_immediate) * np.minimum(forward_gaps, self.v_max)
 
         # add bias depending on the option, such that all vehicles have a preference to move right: approximating certain traffic 'rules'
-        # also add a bias, accounting for a bias towards a specific action: staying
-        # TODO: this addition of a bias towards staying makes a massive difference in the degree to which the M3 results are shifted; for no bias like this, jams pop up for almost all point in phase space
+        # also add a term, accounting for a bias towards a specific action: staying
         raw_utility[:, [Action.LEFT, Action.RIGHT]] -= 1 # bias towards staying
         raw_utility[:, Action.LEFT] -= self.bias_strength
         raw_utility[:, Action.RIGHT] += self.bias_strength
@@ -217,7 +256,6 @@ class Agents:
         loss_mask = delta < 0
         utility[gain_mask] = np.pow(delta[gain_mask], self.risk_factor)
         utility[loss_mask] = -self.loss_scale * np.pow(-delta[loss_mask], self.loss_factor)
-
 
         # account for bounded rationality using logit assumption
         max_utility = np.max(utility, axis=1, keepdims=True)
@@ -245,7 +283,17 @@ class Agents:
         return choices
 
 
-    def update_velocities(self, slowdown):
+    def update_velocities(self, slowdown: float) -> None:
+        """
+        Apply the standard Nagel-Schreckenberg velocity update rules.
+
+        The update consists of four steps applied simulatiously to all agents: Acceleration, braking, random slowdown, moving
+
+        Parameters
+        ----------
+        slowdown : float
+            Probability of random deceleration in the [0, 1] range.
+        """
         gaps_forward = self.compute_stay_gaps()
         self.velocities = np.minimum(self.velocities + 1, self.v_max) # acceleration
         self.velocities = np.minimum(self.velocities, gaps_forward) # braking
@@ -253,5 +301,17 @@ class Agents:
         self.velocities = np.where((self.velocities > 0) & (random_values < slowdown), self.velocities - 1, self.velocities) # janky way of reducing velocity by 1 by a given percentage, if it wasn't zero already
 
 
-    def update_histories(self, choices, velocities):
+    def update_histories(self, choices: npt.NDArray[np.int_], velocities: npt.NDArray[np.int_]) -> None:
+        """
+        Update the learned velocity histories using exponential moving average.
+
+        For each agent, the history value for the action that was actually applied is updated towards the achieved velocity using the learning rate.
+
+        Parameters
+        ----------
+        choices : npt.NDArray[np.int_]
+            The actions that were actually applied (taking collisions into account) with shape (n_agents).
+        velocities : npt.NDArray[np.int_]
+            The velocities achieved after the NaSch update. Shape (n_agents).
+        """
         self.histories[np.arange(self.n_agents), choices] = (1 - self.learning_rate) * self.histories[np.arange(self.n_agents), choices] + self.learning_rate * velocities

@@ -69,6 +69,7 @@ def run_simulation(params):
 
     return flow, avg_velocity, M3, M4, avg_switch_rate
 
+
 def take_measurements(
     model_class,
     n_lanes: int = 3,
@@ -111,6 +112,7 @@ def take_measurements(
     for i in range(n_rho):
         for j in range(n_p):
             block = results[idx : idx + samples]
+
             flows = [result[0] for result in block]
             velocities = [result[1] for result in block]
             M3 = [result[2] for result in block]
@@ -143,6 +145,7 @@ def take_measurements(
         'switch_rate_mean': switch_rate_mean
     }
 
+
 def plot_generics(
         data_list, 
         labels = None, 
@@ -169,6 +172,7 @@ def plot_generics(
     elif n_plots == 1:
         axes = axes[np.newaxis, :]
 
+    # for each plot type supported, define how the plot looks
     for experiment_index, data in enumerate(data_list):
         X, Y = np.meshgrid(data['densities'], data['slowdowns'], indexing='ij')
 
@@ -252,6 +256,7 @@ def plot_generics(
 
     return fig
 
+
 def run_histogram_replicates(
     model_class,
     n_lanes,
@@ -325,6 +330,7 @@ def run_histogram_replicates(
 
     return occupancy_per_lane, avg_velocity_per_lane, velocity_histogram
 
+
 def plot_histograms(
     hist_data_list,
     v_max,
@@ -391,6 +397,7 @@ if __name__ == "__main__":
             n_measure_steps=n_measure_steps,
             replicates=hist_replicates,
         )
+        
         hist_data.append({
             'occupancy': occupancy,
             'avg_velocity': avg_velocity,

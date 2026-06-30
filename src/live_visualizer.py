@@ -66,8 +66,6 @@ class BasicStepwiseVisualizer:
             if len(history) <= 1:
                 continue
 
-            segments = []
-            segment = [history[0]]
             for j in range(1, len(history)):
                 prev_lane, prev_pos = history[j - 1]
                 curr_lane, curr_pos = history[j]
@@ -86,7 +84,7 @@ class BasicStepwiseVisualizer:
                     self.ax.plot([prev_lane, middle_lane], [prev_pos, self.agents.lane_length], color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
                     self.ax.plot([middle_lane, curr_lane], [0, curr_pos], color=self.agent_colors[i], alpha=0.6, linestyle='-', linewidth=2)
 
-        # Cars
+        # draw vehicles
         self.ax.scatter(
             self.agents.lanes,
             self.agents.positions,
@@ -98,7 +96,9 @@ class BasicStepwiseVisualizer:
 
         self.fig.canvas.draw_idle()
 
+
     def next_step(self, event):
+        # this function gets called when the step button gets clicked. Iterate the model once, then update the vehicle trails and redraw
         self.model.step()
 
         for i in range(self.agents.n_agents):
