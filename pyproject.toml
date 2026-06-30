@@ -1,0 +1,13 @@
+[project]
+name = "agent-based-modelling"
+version = "0.1.0"
+description = "Multi-lane extension of NaSch traffic model"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "matplotlib>=3.9.4",
+    "numpy>=2.0.2",
+    "salib>=1.5.2",
+    "snakeviz>=2.2.2",
+    "tqdm>=4.68.3",
+]
