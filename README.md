@@ -2,7 +2,7 @@
 This repository hosts the implementation for a proposed multi-lane learning switching extension of the Nagel-Schrekenberg traffic model. This is part of the Agent-based Modelling course at the University of Amsterdam, 2025-2026. 
 
 ## Project structure
-The 'src' folder contains all the python code. The model implementation, both baseline and extended, is split across the 'agent.py' and 'model.py' files. The remaining scripts are for various ways of analyzing the system. The 'figures' folder stores plots from the development phase, split across two learning methods.
+The _src_ folder contains all the python code. The model implementation, both baseline and extended, is split across the _agent.py_ and _model.py_ files. The remaining scripts are for various ways of analyzing the system. The _figures_ folder stores plots from the development phase, split across two learning methods.
 
 ## Installation / Running
 Clone the repository, and navigate to the new project folder. The project dependencies are managed by uv, installation and further information of which can be found [here](https://docs.astral.sh/uv/). Run the following to set up the environment and install all required dependencies:
@@ -10,7 +10,7 @@ Clone the repository, and navigate to the new project folder. The project depend
 uv sync
 ```
 
-A stepwise visualizer is included, showing vehicles and their choices. It can be configured by modifying the parameters set at the bottom of the 'live_visualizer.py' file. Then start it using:
+A stepwise visualizer is included, showing vehicles and their choices. It can be configured by modifying the parameters set at the bottom of the _live-visualizer.py_ file. Then start it using:
 ```bash
 uv run src/live_visualizer.py
 ```
